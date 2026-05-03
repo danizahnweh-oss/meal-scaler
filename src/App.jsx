@@ -81,6 +81,62 @@ const INITIAL_DB = [
   { id: 147, name: 'Honig', kcal: 304, p: 0.3, c: 82, f: 0, defaultGrams: 15 },
   { id: 148, name: 'Tomaten (passiert)', kcal: 35, p: 1.7, c: 7, f: 0.2, defaultGrams: 200 },
   { id: 149, name: 'Apfelmus (ungezuckert)', kcal: 41, p: 0.2, c: 10, f: 0.1, defaultGrams: 100 },
+
+  // Vegetarisch / Vegan
+  { id: 150, name: 'Tempeh', kcal: 192, p: 19, c: 9, f: 11, defaultGrams: 100 },
+  { id: 151, name: 'Seitan', kcal: 130, p: 25, c: 5, f: 2, defaultGrams: 100 },
+  { id: 152, name: 'Hummus', kcal: 250, p: 8, c: 16, f: 18, defaultGrams: 50 },
+  { id: 153, name: 'Edamame (gegart)', kcal: 122, p: 11, c: 9, f: 5, defaultGrams: 100 },
+  { id: 154, name: 'Schwarze Bohnen (gekocht)', kcal: 132, p: 9, c: 24, f: 0.5, defaultGrams: 150 },
+  { id: 155, name: 'Kidneybohnen (gekocht)', kcal: 127, p: 9, c: 22, f: 0.5, defaultGrams: 150 },
+  { id: 156, name: 'Hafermilch', kcal: 47, p: 0.4, c: 7, f: 1.5, defaultGrams: 200 },
+  { id: 157, name: 'Mandelmilch (ungezuckert)', kcal: 17, p: 0.5, c: 0.4, f: 1.5, defaultGrams: 200 },
+  { id: 158, name: 'Sojamilch (natur)', kcal: 39, p: 3.3, c: 0.4, f: 2.2, defaultGrams: 200 },
+  { id: 159, name: 'Hafer-Joghurt', kcal: 60, p: 1, c: 8, f: 2.5, defaultGrams: 150 },
+  { id: 160, name: 'Falafel (TK/fertig)', kcal: 333, p: 12, c: 32, f: 17, defaultGrams: 100 },
+
+  // Mehr Milchprodukte
+  { id: 161, name: 'Frischkäse light', kcal: 130, p: 10, c: 4, f: 8, defaultGrams: 30 },
+  { id: 162, name: 'Frischkäse (Doppelrahm)', kcal: 320, p: 6, c: 3, f: 32, defaultGrams: 30 },
+  { id: 163, name: 'Quark (20% Fett)', kcal: 110, p: 12, c: 3, f: 5, defaultGrams: 200 },
+  { id: 164, name: 'Harzer Käse', kcal: 120, p: 28, c: 0, f: 0.7, defaultGrams: 60 },
+
+  // Kartoffel-Variationen
+  { id: 165, name: 'Pommes (TK, Ofen)', kcal: 152, p: 2.7, c: 24, f: 4.7, defaultGrams: 150 },
+  { id: 166, name: 'Kartoffelpüree (zubereitet)', kcal: 88, p: 2, c: 13, f: 3, defaultGrams: 200 },
+  { id: 167, name: 'Süßkartoffel-Pommes (TK)', kcal: 175, p: 2, c: 28, f: 6, defaultGrams: 150 },
+  { id: 168, name: 'Bratkartoffeln (zubereitet)', kcal: 130, p: 2.5, c: 16, f: 6, defaultGrams: 200 },
+
+  // Butter-Varianten
+  { id: 169, name: 'Halbfettbutter (40%)', kcal: 365, p: 0.7, c: 0.7, f: 40, defaultGrams: 10 },
+  { id: 170, name: 'Margarine', kcal: 720, p: 0.2, c: 0.4, f: 80, defaultGrams: 10 },
+
+  // Mehr Gemüse
+  { id: 171, name: 'Rosenkohl', kcal: 36, p: 3.4, c: 7, f: 0.4, defaultGrams: 200 },
+  { id: 172, name: 'Sauerkraut', kcal: 19, p: 1.5, c: 4, f: 0.2, defaultGrams: 150 },
+  { id: 173, name: 'Rote Beete', kcal: 43, p: 1.6, c: 10, f: 0.2, defaultGrams: 150 },
+  { id: 174, name: 'Hokkaido-Kürbis', kcal: 26, p: 0.7, c: 5, f: 0.1, defaultGrams: 200 },
+  { id: 175, name: 'Erbsen (TK)', kcal: 81, p: 5, c: 14, f: 0.4, defaultGrams: 150 },
+  { id: 176, name: 'Grüne Bohnen (TK)', kcal: 35, p: 2, c: 7, f: 0.2, defaultGrams: 200 },
+  { id: 177, name: 'Kohlrabi', kcal: 27, p: 1.7, c: 6, f: 0.1, defaultGrams: 200 },
+  { id: 178, name: 'Rucola', kcal: 25, p: 2.6, c: 2, f: 0.7, defaultGrams: 50 },
+
+  // Mehr Obst
+  { id: 179, name: 'Mango', kcal: 60, p: 0.8, c: 15, f: 0.4, defaultGrams: 150 },
+  { id: 180, name: 'Ananas', kcal: 50, p: 0.5, c: 13, f: 0.1, defaultGrams: 150 },
+  { id: 181, name: 'Trauben', kcal: 67, p: 0.6, c: 17, f: 0.2, defaultGrams: 150 },
+  { id: 182, name: 'Birne', kcal: 57, p: 0.4, c: 15, f: 0.1, defaultGrams: 150 },
+
+  // Getreide & Samen
+  { id: 183, name: 'Weizenmehl (Type 405)', kcal: 348, p: 10, c: 71, f: 1, defaultGrams: 50 },
+  { id: 184, name: 'Vollkornmehl', kcal: 343, p: 14, c: 58, f: 2.5, defaultGrams: 50 },
+  { id: 185, name: 'Chiasamen', kcal: 486, p: 17, c: 42, f: 31, defaultGrams: 15 },
+  { id: 186, name: 'Leinsamen (geschrotet)', kcal: 534, p: 18, c: 29, f: 42, defaultGrams: 15 },
+
+  // Mehr Fisch / Wurst
+  { id: 187, name: 'Forelle', kcal: 119, p: 20, c: 0, f: 4, defaultGrams: 130 },
+  { id: 188, name: 'Kabeljau', kcal: 82, p: 18, c: 0, f: 0.7, defaultGrams: 150 },
+  { id: 189, name: 'Lachsschinken', kcal: 110, p: 22, c: 0, f: 2, defaultGrams: 50 },
 ];
 
 const STANDARD_IDS = new Set(INITIAL_DB.map(f => f.id));
