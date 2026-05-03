@@ -165,6 +165,14 @@ const INITIAL_DB = [
   { id: 207, name: 'Senf (mittelscharf)', kcal: 95, p: 5, c: 8, f: 4.5, defaultGrams: 10 },
   { id: 208, name: 'Sojasoße', kcal: 60, p: 10, c: 5, f: 0, defaultGrams: 15 },
   { id: 209, name: 'Balsamico-Essig', kcal: 88, p: 0.5, c: 17, f: 0, defaultGrams: 15 },
+
+  // Gefrorene Früchte
+  { id: 210, name: 'Heidelbeeren (TK)', kcal: 57, p: 0.7, c: 14, f: 0.3, defaultGrams: 100 },
+  { id: 211, name: 'Himbeeren (TK)', kcal: 52, p: 1.2, c: 12, f: 0.7, defaultGrams: 100 },
+  { id: 212, name: 'Erdbeeren (TK)', kcal: 32, p: 0.7, c: 7.7, f: 0.3, defaultGrams: 100 },
+  { id: 213, name: 'Beerenmischung (TK)', kcal: 50, p: 1, c: 11, f: 0.5, defaultGrams: 100 },
+  { id: 214, name: 'Mango (TK, gewürfelt)', kcal: 60, p: 0.8, c: 15, f: 0.4, defaultGrams: 100 },
+  { id: 215, name: 'Kirschen (TK, entsteint)', kcal: 63, p: 1.1, c: 16, f: 0.2, defaultGrams: 100 },
 ];
 
 const STANDARD_IDS = new Set(INITIAL_DB.map(f => f.id));
