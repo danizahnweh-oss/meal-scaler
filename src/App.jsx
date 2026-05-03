@@ -211,6 +211,7 @@ export default function App() {
   const [pantry, setPantry] = useState(saved.pantry ?? []);
   const [excludedInput, setExcludedInput] = useState('');
   const [pantryInput, setPantryInput] = useState('');
+  const [newFood, setNewFood] = useState({ name: '', kcal: '', p: '', c: '', f: '', defaultGrams: '100' });
 
   // Auth states
   const [currentUser, setCurrentUser] = useState(loadSession());
@@ -552,6 +553,27 @@ export default function App() {
   const addExcluded = () => { const v = excludedInput.trim(); if (!v || excluded.includes(v)) return; setExcluded([...excluded, v]); setExcludedInput(''); };
   const addPantry = () => { const v = pantryInput.trim(); if (!v || pantry.includes(v)) return; setPantry([...pantry, v]); setPantryInput(''); };
 
+  const addCustomFood = () => {
+    const name = newFood.name.trim();
+    if (!name) return;
+    const newId = foodDb.length > 0 ? Math.max(...foodDb.map(f => f.id)) + 1 : 1;
+    setFoodDb([...foodDb, {
+      id: newId, name,
+      kcal: Number(newFood.kcal) || 0,
+      p: Number(newFood.p) || 0,
+      c: Number(newFood.c) || 0,
+      f: Number(newFood.f) || 0,
+      defaultGrams: Number(newFood.defaultGrams) || 100,
+    }]);
+    setNewFood({ name: '', kcal: '', p: '', c: '', f: '', defaultGrams: '100' });
+    showToast(`"${name}" zur Datenbank hinzugefügt`);
+  };
+
+  const removeFood = (id) => {
+    if (id <= 10) return; // Schutz für die 10 Standard-Zutaten
+    setFoodDb(foodDb.filter(f => f.id !== id));
+  };
+
   // Today's totals
   const todayKey = getTodayKey();
   const todayTotals = getDayTotals(plan[todayKey]);
@@ -779,6 +801,70 @@ export default function App() {
                   </span>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                🍽️ Eigene Zutat hinzufügen
+              </label>
+              <p className="text-xs text-slate-500 mt-1 mb-3">Werte direkt von der Verpackung. Landet danach in der Zutat-Auswahl.</p>
+              <div className="space-y-2">
+                <input type="text" placeholder="Name (z.B. Skyr Vanille)" value={newFood.name}
+                  onChange={(e) => setNewFood({ ...newFood, name: e.target.value })}
+                  onKeyDown={(e) => e.key === 'Enter' && addCustomFood()}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-400 bg-slate-50" />
+                <div className="grid grid-cols-5 gap-2">
+                  <div>
+                    <input type="number" placeholder="kcal" value={newFood.kcal}
+                      onChange={(e) => setNewFood({ ...newFood, kcal: e.target.value })}
+                      className="w-full px-2 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-400 bg-slate-50 tabular-nums text-sm" />
+                    <span className="text-[10px] text-slate-400 block text-center mt-0.5">kcal/100g</span>
+                  </div>
+                  <div>
+                    <input type="number" placeholder="P" value={newFood.p}
+                      onChange={(e) => setNewFood({ ...newFood, p: e.target.value })}
+                      className="w-full px-2 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-400 bg-slate-50 tabular-nums text-sm" />
+                    <span className="text-[10px] text-emerald-600 block text-center mt-0.5">Protein</span>
+                  </div>
+                  <div>
+                    <input type="number" placeholder="K" value={newFood.c}
+                      onChange={(e) => setNewFood({ ...newFood, c: e.target.value })}
+                      className="w-full px-2 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-400 bg-slate-50 tabular-nums text-sm" />
+                    <span className="text-[10px] text-blue-600 block text-center mt-0.5">Carbs</span>
+                  </div>
+                  <div>
+                    <input type="number" placeholder="F" value={newFood.f}
+                      onChange={(e) => setNewFood({ ...newFood, f: e.target.value })}
+                      className="w-full px-2 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-amber-400 bg-slate-50 tabular-nums text-sm" />
+                    <span className="text-[10px] text-amber-600 block text-center mt-0.5">Fett</span>
+                  </div>
+                  <div>
+                    <input type="number" placeholder="100" value={newFood.defaultGrams}
+                      onChange={(e) => setNewFood({ ...newFood, defaultGrams: e.target.value })}
+                      className="w-full px-2 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-slate-400 bg-slate-50 tabular-nums text-sm" />
+                    <span className="text-[10px] text-slate-500 block text-center mt-0.5">Portion(g)</span>
+                  </div>
+                </div>
+                <button onClick={addCustomFood} disabled={!newFood.name.trim()}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors">
+                  <Plus size={14} /> Zutat speichern
+                </button>
+              </div>
+
+              {foodDb.filter(f => f.id > 10).length > 0 && (
+                <div className="mt-4">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Eigene + KI-Zutaten</span>
+                  <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                    {foodDb.filter(f => f.id > 10).map(f => (
+                      <div key={f.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                        <span className="font-medium text-slate-700 truncate flex-1">{f.name}</span>
+                        <span className="text-xs text-slate-500 tabular-nums shrink-0 ml-2">{Math.round(f.kcal)} kcal · P{Math.round(f.p)} K{Math.round(f.c)} F{Math.round(f.f)}</span>
+                        <button onClick={() => removeFood(f.id)} className="ml-2 text-slate-400 hover:text-rose-500 shrink-0"><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1008,7 +1094,7 @@ export default function App() {
                                   const nuts = calcNutrients(ing.foodId, ing.grams);
                                   return (
                                     <div key={ing.id} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-100 group">
-                                      <span className="font-medium text-slate-700 flex-1 text-sm">{food?.name}</span>
+                                      <span className={`font-medium flex-1 text-sm ${food ? 'text-slate-700' : 'text-rose-500 italic'}`}>{food?.name || '⚠️ Zutat gelöscht'}</span>
                                       <input type="number" value={ing.grams} onChange={(e) => updateIngredientGrams(day, meal.id, ing.id, e.target.value)}
                                         className="w-16 px-2 py-1 text-right border border-slate-200 rounded text-sm tabular-nums outline-none focus:ring-2 focus:ring-blue-400" />
                                       <span className="text-xs text-slate-400 w-3">g</span>
