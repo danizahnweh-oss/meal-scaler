@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronRight, Calculator, Search, Wand2, Bot, Loader2, Target, ToggleLeft, ToggleRight, Settings, X } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Calculator, Search, Wand2, Bot, Loader2, Target, ToggleLeft, ToggleRight, Settings, X, User, LogOut, Cloud, CloudOff } from 'lucide-react';
 
 const WORKER_URL = 'https://meal-scale-proxy.sanktannagymnasium.workers.dev';
 
@@ -25,6 +25,7 @@ const RECIPE_DB = [
 const DAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 
 const STORAGE_KEY = 'meal_scaler_state_v1';
+const SESSION_KEY = 'meal_scaler_session';
 
 const loadSaved = () => {
   try {
@@ -34,11 +35,20 @@ const loadSaved = () => {
     return {};
   }
 };
+const loadSession = () => {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
 const saved = loadSaved();
 
 const emptyPlan = () => DAYS.reduce((acc, day) => ({ ...acc, [day]: [] }), {});
 
 export default function App() {
+  // App data states
   const [dailyTarget, setDailyTarget] = useState(saved.dailyTarget ?? 2400);
   const [foodDb, setFoodDb] = useState(saved.foodDb ?? INITIAL_DB);
   const [plan, setPlan] = useState(saved.plan ?? emptyPlan());
@@ -67,14 +77,22 @@ export default function App() {
   const [excludedInput, setExcludedInput] = useState('');
   const [pantryInput, setPantryInput] = useState('');
 
+  // Auth states
+  const [currentUser, setCurrentUser] = useState(loadSession());
+  const [loginName, setLoginName] = useState('');
+  const [loginPin, setLoginPin] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
+  const [hasLoadedFromServer, setHasLoadedFromServer] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('idle'); // idle | saving | saved | error
+
   const bmr = userGender === 'male'
     ? (10 * userWeight) + (6.25 * userHeight) - (5 * userAge) + 5
     : (10 * userWeight) + (6.25 * userHeight) - (5 * userAge) - 161;
-
   const tdee = bmr * activityFactor;
   const calculatedTarget = Math.round(tdee + goalDeficit);
 
-  // Persistenz
+  // Local cache: persist to localStorage on every change
   useEffect(() => {
     const state = {
       dailyTarget, foodDb, plan,
@@ -84,6 +102,7 @@ export default function App() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
   }, [dailyTarget, foodDb, plan, userGender, userAge, userHeight, userWeight, activityFactor, goalDeficit, excluded, pantry]);
 
+  // Search suggestions
   useEffect(() => {
     if (searchQuery.length < 2) {
       setSuggestedRecipes([]);
@@ -94,6 +113,134 @@ export default function App() {
     const query = searchQuery.toLowerCase();
     setSuggestedRecipes(RECIPE_DB.filter(r => r.name.toLowerCase().includes(query)));
   }, [searchQuery]);
+
+  // Load from server when user logs in
+  useEffect(() => {
+    if (!currentUser) {
+      setHasLoadedFromServer(false);
+      return;
+    }
+    loadFromServer();
+  }, [currentUser?.name, currentUser?.pin]);
+
+  // Auto-save to server (debounced)
+  useEffect(() => {
+    if (!currentUser || !hasLoadedFromServer) return;
+    setSyncStatus('saving');
+    const timer = setTimeout(() => { saveToServer(); }, 1500);
+    return () => clearTimeout(timer);
+  }, [dailyTarget, foodDb, plan, userGender, userAge, userHeight, userWeight, activityFactor, goalDeficit, excluded, pantry, hasLoadedFromServer]);
+
+  const loadFromServer = async () => {
+    if (!currentUser) return;
+    setAuthBusy(true);
+    try {
+      const r = await fetch(`${WORKER_URL}/load`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: currentUser.name, pin: currentUser.pin }),
+      });
+      if (r.status === 401) {
+        // Stored session has wrong PIN — log out
+        handleLogout();
+        return;
+      }
+      if (!r.ok) {
+        setSyncStatus('error');
+        return;
+      }
+      const { data } = await r.json();
+      if (data) {
+        if (data.dailyTarget != null) setDailyTarget(data.dailyTarget);
+        if (data.foodDb) setFoodDb(data.foodDb);
+        if (data.plan) setPlan(data.plan);
+        if (data.userGender) setUserGender(data.userGender);
+        if (data.userAge != null) setUserAge(data.userAge);
+        if (data.userHeight != null) setUserHeight(data.userHeight);
+        if (data.userWeight != null) setUserWeight(data.userWeight);
+        if (data.activityFactor != null) setActivityFactor(data.activityFactor);
+        if (data.goalDeficit != null) setGoalDeficit(data.goalDeficit);
+        if (data.excluded) setExcluded(data.excluded);
+        if (data.pantry) setPantry(data.pantry);
+      }
+      setHasLoadedFromServer(true);
+      setSyncStatus('saved');
+    } catch (err) {
+      console.error(err);
+      setSyncStatus('error');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const saveToServer = async () => {
+    if (!currentUser) return;
+    const data = {
+      dailyTarget, foodDb, plan,
+      userGender, userAge, userHeight, userWeight, activityFactor, goalDeficit,
+      excluded, pantry,
+    };
+    try {
+      const r = await fetch(`${WORKER_URL}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: currentUser.name, pin: currentUser.pin, data }),
+      });
+      setSyncStatus(r.ok ? 'saved' : 'error');
+    } catch {
+      setSyncStatus('error');
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!loginName.trim() || !/^\d{4}$/.test(loginPin)) {
+      setLoginError('Name eingeben und 4-stelligen PIN.');
+      return;
+    }
+    setAuthBusy(true);
+    setLoginError('');
+    try {
+      const r = await fetch(`${WORKER_URL}/load`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: loginName.trim(), pin: loginPin }),
+      });
+      if (r.status === 401) {
+        setLoginError('PIN ist falsch für diesen Namen.');
+        setAuthBusy(false);
+        return;
+      }
+      if (!r.ok) {
+        setLoginError('Anmeldung fehlgeschlagen. Internet/Server prüfen.');
+        setAuthBusy(false);
+        return;
+      }
+      const session = { name: loginName.trim(), pin: loginPin };
+      try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch {}
+      setCurrentUser(session);
+      setLoginPin('');
+    } catch {
+      setLoginError('Verbindung fehlgeschlagen.');
+      setAuthBusy(false);
+    }
+  };
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+    setCurrentUser(null);
+    setHasLoadedFromServer(false);
+    // Reset state to defaults
+    setDailyTarget(2400);
+    setFoodDb(INITIAL_DB);
+    setPlan(emptyPlan());
+    setUserGender('male'); setUserAge(33); setUserHeight(181); setUserWeight(98.8);
+    setActivityFactor(1.375); setGoalDeficit(-500);
+    setExcluded([]); setPantry([]);
+    setSyncStatus('idle');
+  };
 
   const fetchWithRetry = async (url, options, retries = 3) => {
     for (let i = 0; i < retries; i++) {
@@ -123,7 +270,6 @@ export default function App() {
       const excludedHint = excluded.length > 0
         ? ` UNVERTRÄGLICHKEITEN: Verwende NIEMALS diese Zutaten oder Bestandteile davon: ${excluded.join(', ')}.`
         : '';
-
       const baseInstruction = `Erstelle ein echtes, sinnvoll kombiniertes Gericht (kein Zutat-Wirrwarr). Nutze möglichst viele passende Zutaten der Liste. Bevorzuge eine HIGH-PROTEIN Komposition.`;
 
       const promptText = isCreativeMode
@@ -192,10 +338,7 @@ export default function App() {
         const newFood = {
           id: highestId,
           name: ing.name + ' (KI)',
-          kcal: ing.kcal || 0,
-          p: ing.p || 0,
-          c: ing.c || 0,
-          f: ing.f || 0,
+          kcal: ing.kcal || 0, p: ing.p || 0, c: ing.c || 0, f: ing.f || 0,
           defaultGrams: ing.defaultGrams || 100
         };
         currentDb.push(newFood);
@@ -210,17 +353,12 @@ export default function App() {
         id: Date.now(),
         name: aiRecipeResult.name + (isCreativeMode ? ' ✨ (Kreativ)' : ''),
         ingredients: processedIngredientIds.map((foodId, idx) => ({
-          id: Date.now() + idx,
-          foodId: foodId,
-          grams: currentDb.find(f => f.id === foodId)?.defaultGrams || 100
+          id: Date.now() + idx, foodId, grams: currentDb.find(f => f.id === foodId)?.defaultGrams || 100
         }))
       }]
     }));
 
-    setSearchQuery('');
-    setAiRecipeResult(null);
-    setIsCreativeMode(false);
-    setExpandedDay(day);
+    setSearchQuery(''); setAiRecipeResult(null); setIsCreativeMode(false); setExpandedDay(day);
   };
 
   const addStandardRecipeToDay = (day, recipeName, ingredientIds) => {
@@ -229,14 +367,11 @@ export default function App() {
         id: Date.now(),
         name: recipeName,
         ingredients: ingredientIds.map((foodId, idx) => ({
-          id: Date.now() + idx,
-          foodId: foodId,
-          grams: foodDb.find(f => f.id === foodId)?.defaultGrams || 100
+          id: Date.now() + idx, foodId, grams: foodDb.find(f => f.id === foodId)?.defaultGrams || 100
         }))
       }]
     }));
-    setSearchQuery('');
-    setExpandedDay(day);
+    setSearchQuery(''); setExpandedDay(day);
   };
 
   const calcNutrients = (foodId, grams) => {
@@ -299,9 +434,7 @@ export default function App() {
     const currentTotals = getDayTotals(plan[day]);
     if (currentTotals.kcal === 0) return;
     const ratio = dailyTarget / currentTotals.kcal;
-
-    if (ratio > 2 || ratio < 0.5) console.warn("Skalierungsfaktor extrem. Ist der Tag vollständig?");
-
+    if (ratio > 2 || ratio < 0.5) console.warn("Skalierungsfaktor extrem.");
     setPlan((prev) => ({
       ...prev, [day]: prev[day].map((meal) => ({
         ...meal, ingredients: meal.ingredients.map((ing) => ({ ...ing, grams: Math.round(ing.grams * ratio) })),
@@ -311,20 +444,79 @@ export default function App() {
 
   const addExcluded = () => {
     const v = excludedInput.trim();
-    if (!v) return;
-    if (excluded.includes(v)) return;
-    setExcluded([...excluded, v]);
-    setExcludedInput('');
+    if (!v || excluded.includes(v)) return;
+    setExcluded([...excluded, v]); setExcludedInput('');
   };
-
   const addPantry = () => {
     const v = pantryInput.trim();
-    if (!v) return;
-    if (pantry.includes(v)) return;
-    setPantry([...pantry, v]);
-    setPantryInput('');
+    if (!v || pantry.includes(v)) return;
+    setPantry([...pantry, v]); setPantryInput('');
   };
 
+  // ============ LOGIN SCREEN ============
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans text-slate-800">
+        <div className="bg-white p-8 rounded-xl shadow-md border border-slate-200 max-w-md w-full">
+          <div className="flex items-center gap-2 mb-2">
+            <Wand2 size={24} className="text-blue-600" />
+            <h1 className="text-2xl font-bold text-slate-900">Makro Scaler</h1>
+          </div>
+          <p className="text-sm text-slate-500 mb-6">Melde dich mit Name + PIN an. Neue Namen werden automatisch angelegt.</p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 uppercase">Name</label>
+              <input
+                type="text"
+                placeholder="z.B. Daniel"
+                value={loginName}
+                onChange={(e) => setLoginName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700 uppercase">4-stelliger PIN</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="••••"
+                value={loginPin}
+                onChange={(e) => setLoginPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 tracking-widest text-lg"
+              />
+            </div>
+
+            {loginError && (
+              <div className="bg-red-50 text-red-600 p-3 rounded text-sm border border-red-100">
+                {loginError}
+              </div>
+            )}
+
+            <button
+              onClick={handleLogin}
+              disabled={authBusy || !loginName.trim() || loginPin.length !== 4}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2"
+            >
+              {authBusy ? <Loader2 size={18} className="animate-spin" /> : <User size={18} />}
+              Anmelden
+            </button>
+
+            <p className="text-xs text-slate-400 text-center">
+              Beim ersten Login wird mit deinem PIN ein neues Konto erstellt.<br/>
+              Tipp: Merk dir den PIN — ohne kommst du nicht mehr an deine Daten.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============ MAIN APP ============
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -345,18 +537,32 @@ export default function App() {
                 className="w-24 px-2 py-1 rounded border border-slate-300 text-center font-bold focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 items-center">
               <button
                 onClick={() => setShowMacroCalc(!showMacroCalc)}
                 className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1"
               >
-                <Target size={14} /> Bedarf berechnen
+                <Target size={14} /> Bedarf
               </button>
               <button
                 onClick={() => setShowSettings(!showSettings)}
                 className="text-xs text-amber-600 font-medium hover:underline flex items-center gap-1"
               >
                 <Settings size={14} /> Einstellungen
+              </button>
+              <span className="text-xs text-slate-400">|</span>
+              <span className="text-xs text-slate-600 flex items-center gap-1">
+                <User size={12} /> {currentUser.name}
+              </span>
+              {syncStatus === 'saving' && <Loader2 size={12} className="animate-spin text-slate-400" />}
+              {syncStatus === 'saved' && <Cloud size={12} className="text-green-500" />}
+              {syncStatus === 'error' && <CloudOff size={12} className="text-red-500" />}
+              <button
+                onClick={handleLogout}
+                title="Abmelden"
+                className="text-xs text-slate-500 hover:text-red-500 flex items-center gap-1"
+              >
+                <LogOut size={12} />
               </button>
             </div>
           </div>
@@ -388,10 +594,7 @@ export default function App() {
                   onKeyDown={(e) => e.key === 'Enter' && addExcluded()}
                   className="flex-1 px-3 py-2 border border-amber-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500 bg-white"
                 />
-                <button
-                  onClick={addExcluded}
-                  className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-                >
+                <button onClick={addExcluded} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
                   <Plus size={16} className="inline" /> Hinzufügen
                 </button>
               </div>
@@ -400,10 +603,7 @@ export default function App() {
                 {excluded.map((item, i) => (
                   <span key={i} className="bg-white border border-amber-300 rounded-full px-3 py-1 text-sm flex items-center gap-2">
                     {item}
-                    <button
-                      onClick={() => setExcluded(excluded.filter((_, idx) => idx !== i))}
-                      className="text-amber-600 hover:text-red-500"
-                    >
+                    <button onClick={() => setExcluded(excluded.filter((_, idx) => idx !== i))} className="text-amber-600 hover:text-red-500">
                       <X size={14} />
                     </button>
                   </span>
@@ -425,10 +625,7 @@ export default function App() {
                   onKeyDown={(e) => e.key === 'Enter' && addPantry()}
                   className="flex-1 px-3 py-2 border border-amber-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500 bg-white"
                 />
-                <button
-                  onClick={addPantry}
-                  className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-                >
+                <button onClick={addPantry} className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
                   <Plus size={16} className="inline" /> Hinzufügen
                 </button>
               </div>
@@ -437,10 +634,7 @@ export default function App() {
                 {pantry.map((item, i) => (
                   <span key={i} className="bg-white border border-amber-300 rounded-full px-3 py-1 text-sm flex items-center gap-2">
                     {item}
-                    <button
-                      onClick={() => setPantry(pantry.filter((_, idx) => idx !== i))}
-                      className="text-amber-600 hover:text-red-500"
-                    >
+                    <button onClick={() => setPantry(pantry.filter((_, idx) => idx !== i))} className="text-amber-600 hover:text-red-500">
                       <X size={14} />
                     </button>
                   </span>
@@ -504,10 +698,7 @@ export default function App() {
                 <div className="text-xl font-bold text-blue-900">Empfohlenes Ziel: {calculatedTarget} kcal</div>
               </div>
               <button
-                onClick={() => {
-                  setDailyTarget(calculatedTarget);
-                  setShowMacroCalc(false);
-                }}
+                onClick={() => { setDailyTarget(calculatedTarget); setShowMacroCalc(false); }}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors w-full md:w-auto"
               >
                 Als Tagesziel übernehmen
@@ -523,7 +714,6 @@ export default function App() {
               <Wand2 size={20} />
               <h3>Rezept & KI Assistent</h3>
             </div>
-
             <button
               onClick={() => setIsCreativeMode(!isCreativeMode)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${isCreativeMode ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-slate-100 border-slate-200 text-slate-600'}`}
@@ -555,7 +745,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* Lokale Suchergebnisse im Struktur-Modus */}
           {searchQuery.length >= 2 && suggestedRecipes.length > 0 && !aiRecipeResult && !isCreativeMode && (
              <div className="mt-4 p-4 bg-slate-50 border border-slate-100 rounded-lg shadow-sm">
                <h4 className="text-sm font-bold text-slate-500 mb-3 uppercase tracking-wider">Gefundene Standard-Gerichte</h4>
@@ -563,11 +752,9 @@ export default function App() {
                   {suggestedRecipes.map(recipe => (
                     <div key={recipe.id} className="flex justify-between items-center bg-white p-3 border rounded-lg">
                        <span className="font-semibold">{recipe.name}</span>
-                       <select
-                        className="text-sm border border-slate-300 rounded px-2 py-1.5 focus:ring-2 outline-none"
+                       <select className="text-sm border border-slate-300 rounded px-2 py-1.5 focus:ring-2 outline-none"
                         onChange={(e) => { if(e.target.value) addStandardRecipeToDay(e.target.value, recipe.name, recipe.ingredients); }}
-                        defaultValue=""
-                      >
+                        defaultValue="">
                         <option value="" disabled>Einfügen in...</option>
                         {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                       </select>
@@ -577,14 +764,12 @@ export default function App() {
              </div>
           )}
 
-          {/* Fehlermeldung */}
           {aiError && (
              <div className="mt-4 bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2 border border-red-100">
                {aiError}
              </div>
           )}
 
-          {/* KI Ergebnis */}
           {aiRecipeResult && (
             <div className={`mt-4 p-4 border rounded-lg shadow-sm ${isCreativeMode ? 'bg-purple-50 border-purple-100' : 'bg-indigo-50 border-indigo-100'}`}>
               <div className={`flex items-center gap-2 font-bold mb-1 ${isCreativeMode ? 'text-purple-700' : 'text-indigo-700'}`}>
@@ -605,11 +790,9 @@ export default function App() {
 
               <div className="flex gap-2 items-center">
                 <span className="text-xs font-medium text-slate-500">Übernehmen für:</span>
-                <select
-                  className="text-sm border border-slate-300 rounded px-2 py-1.5 bg-white flex-1 focus:ring-2 outline-none"
+                <select className="text-sm border border-slate-300 rounded px-2 py-1.5 bg-white flex-1 focus:ring-2 outline-none"
                   onChange={(e) => { if(e.target.value) addAiRecipeToDay(e.target.value); }}
-                  defaultValue=""
-                >
+                  defaultValue="">
                   <option value="" disabled>Tag wählen...</option>
                   {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
@@ -618,7 +801,7 @@ export default function App() {
           )}
         </div>
 
-        {/* Wochentage iterieren */}
+        {/* Wochentage */}
         <div className="space-y-4">
           {DAYS.map((day) => {
             const isExpanded = expandedDay === day;
@@ -668,16 +851,9 @@ export default function App() {
                           </div>
 
                           <div className="mt-4 flex gap-2">
-                            <select
-                              className="flex-1 text-sm border border-slate-300 rounded px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              onChange={(e) => {
-                                if(e.target.value) {
-                                  addIngredient(day, meal.id, e.target.value);
-                                  e.target.value = "";
-                                }
-                              }}
-                              defaultValue=""
-                            >
+                            <select className="flex-1 text-sm border border-slate-300 rounded px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              onChange={(e) => { if(e.target.value) { addIngredient(day, meal.id, e.target.value); e.target.value = ""; } }}
+                              defaultValue="">
                               <option value="" disabled>+ Zutat manuell hinzufügen...</option>
                               {foodDb.map(food => <option key={food.id} value={food.id}>{food.name}</option>)}
                             </select>
@@ -686,17 +862,11 @@ export default function App() {
                     ))}
 
                     <div className="flex flex-wrap gap-3 pt-2">
-                      <button
-                        onClick={() => addMeal(day)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
-                      >
+                      <button onClick={() => addMeal(day)} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
                         <Plus size={16} /> Leere Mahlzeit
                       </button>
-                      <button
-                        onClick={() => scaleToTarget(day)}
-                        disabled={plan[day].length === 0 || totals.kcal === 0}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 ml-auto"
-                      >
+                      <button onClick={() => scaleToTarget(day)} disabled={plan[day].length === 0 || totals.kcal === 0}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 ml-auto">
                         <Calculator size={16} /> Auf {dailyTarget} kcal skalieren
                       </button>
                     </div>
