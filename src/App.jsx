@@ -137,6 +137,34 @@ const INITIAL_DB = [
   { id: 187, name: 'Forelle', kcal: 119, p: 20, c: 0, f: 4, defaultGrams: 130 },
   { id: 188, name: 'Kabeljau', kcal: 82, p: 18, c: 0, f: 0.7, defaultGrams: 150 },
   { id: 189, name: 'Lachsschinken', kcal: 110, p: 22, c: 0, f: 2, defaultGrams: 50 },
+
+  // Basis-Gewürze
+  { id: 190, name: 'Salz', kcal: 0, p: 0, c: 0, f: 0, defaultGrams: 1 },
+  { id: 191, name: 'Pfeffer (schwarz)', kcal: 251, p: 11, c: 64, f: 3, defaultGrams: 1 },
+  { id: 192, name: 'Knoblauch (frisch)', kcal: 149, p: 6.4, c: 33, f: 0.5, defaultGrams: 5 },
+  { id: 193, name: 'Knoblauchpulver', kcal: 331, p: 17, c: 73, f: 0.7, defaultGrams: 2 },
+  { id: 194, name: 'Ingwer (frisch)', kcal: 80, p: 1.8, c: 18, f: 0.8, defaultGrams: 10 },
+
+  // Kräuter
+  { id: 195, name: 'Basilikum (frisch)', kcal: 23, p: 3.2, c: 2.7, f: 0.6, defaultGrams: 5 },
+  { id: 196, name: 'Petersilie (frisch)', kcal: 36, p: 3, c: 6, f: 0.8, defaultGrams: 5 },
+  { id: 197, name: 'Oregano (getrocknet)', kcal: 265, p: 9, c: 69, f: 4.3, defaultGrams: 1 },
+  { id: 198, name: 'Thymian (getrocknet)', kcal: 276, p: 9, c: 64, f: 7, defaultGrams: 1 },
+  { id: 199, name: 'Rosmarin (getrocknet)', kcal: 331, p: 5, c: 64, f: 15, defaultGrams: 1 },
+
+  // Gewürze
+  { id: 200, name: 'Paprikapulver (edelsüß)', kcal: 282, p: 14, c: 54, f: 13, defaultGrams: 2 },
+  { id: 201, name: 'Currypulver', kcal: 325, p: 14, c: 56, f: 14, defaultGrams: 3 },
+  { id: 202, name: 'Chiliflocken', kcal: 282, p: 12, c: 50, f: 14, defaultGrams: 1 },
+  { id: 203, name: 'Kreuzkümmel (Cumin)', kcal: 375, p: 18, c: 44, f: 22, defaultGrams: 2 },
+  { id: 204, name: 'Zimt (gemahlen)', kcal: 247, p: 4, c: 81, f: 1.2, defaultGrams: 2 },
+  { id: 205, name: 'Kurkuma', kcal: 312, p: 9.7, c: 67, f: 3.3, defaultGrams: 2 },
+
+  // Würzmittel
+  { id: 206, name: 'Tomatenmark', kcal: 92, p: 5, c: 19, f: 0.5, defaultGrams: 30 },
+  { id: 207, name: 'Senf (mittelscharf)', kcal: 95, p: 5, c: 8, f: 4.5, defaultGrams: 10 },
+  { id: 208, name: 'Sojasoße', kcal: 60, p: 10, c: 5, f: 0, defaultGrams: 15 },
+  { id: 209, name: 'Balsamico-Essig', kcal: 88, p: 0.5, c: 17, f: 0, defaultGrams: 15 },
 ];
 
 const STANDARD_IDS = new Set(INITIAL_DB.map(f => f.id));
