@@ -352,6 +352,7 @@ export default function App() {
   const [suggestedRecipes, setSuggestedRecipes] = useState([]);
 
   const [isCreativeMode, setIsCreativeMode] = useState(false);
+  const [wantInstructions, setWantInstructions] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiBusyDay, setAiBusyDay] = useState(null);
   const [aiRecipeResult, setAiRecipeResult] = useState(null);
@@ -524,35 +525,41 @@ export default function App() {
       const dbContext = foodDb.map(f => ({ id: f.id, name: f.name }));
       const { pantryHint, excludedHint } = buildPromptHints();
       const baseInstruction = `Erstelle ein echtes, sinnvoll kombiniertes Gericht (kein Zutat-Wirrwarr). Nutze möglichst viele passende Zutaten der Liste. Bevorzuge eine HIGH-PROTEIN Komposition.`;
+      const instructionsHint = wantInstructions
+        ? ` Liefere zusätzlich im Feld "instructions" eine präzise Schritt-für-Schritt-Anleitung (4-8 kurze Schritte, jeweils ein klarer Arbeitsschritt: vorbereiten, schneiden, anbraten, würzen, servieren). Keine Mengenangaben in den Schritten — die Mengen sind separat im ingredients-Array.`
+        : '';
 
       const promptText = isCreativeMode
-        ? `Der User sucht nach einem Rezept für: "${searchQuery}". KREATIV-MODUS: Du darfst völlig NEUE Zutaten erfinden, die nicht in der Datenbank sind. Liefere für jede neue Zutat realistische Makronährwerte (kcal, p, c, f) pro 100g UND eine realistische Standard-Portionsgröße in Gramm (defaultGrams). Bekannte Zutaten dürfen ebenfalls genutzt werden. ${baseInstruction} Bekannte Zutaten: ${JSON.stringify(dbContext)}.${pantryHint}${excludedHint}`
-        : `Der User sucht nach einem Rezept für: "${searchQuery}". STRUKTUR-MODUS: Du darfst AUSSCHLIESSLICH Zutaten aus der bereitgestellten Liste verwenden — KEINE neuen erfinden. ${baseInstruction} Liste: ${JSON.stringify(dbContext)}.${pantryHint}${excludedHint}`;
+        ? `Der User sucht nach einem Rezept für: "${searchQuery}". KREATIV-MODUS: Du darfst völlig NEUE Zutaten erfinden, die nicht in der Datenbank sind. Liefere für jede neue Zutat realistische Makronährwerte (kcal, p, c, f) pro 100g UND eine realistische Standard-Portionsgröße in Gramm (defaultGrams). Bekannte Zutaten dürfen ebenfalls genutzt werden. ${baseInstruction}${instructionsHint} Bekannte Zutaten: ${JSON.stringify(dbContext)}.${pantryHint}${excludedHint}`
+        : `Der User sucht nach einem Rezept für: "${searchQuery}". STRUKTUR-MODUS: Du darfst AUSSCHLIESSLICH Zutaten aus der bereitgestellten Liste verwenden — KEINE neuen erfinden. ${baseInstruction}${instructionsHint} Liste: ${JSON.stringify(dbContext)}.${pantryHint}${excludedHint}`;
+
+      const responseSchema = {
+        type: "OBJECT",
+        properties: {
+          name: { type: "STRING" }, reasoning: { type: "STRING" },
+          ingredients: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: {
+                isNew: { type: "BOOLEAN" }, id: { type: "INTEGER" }, name: { type: "STRING" },
+                kcal: { type: "NUMBER" }, p: { type: "NUMBER" }, c: { type: "NUMBER" }, f: { type: "NUMBER" },
+                defaultGrams: { type: "NUMBER" }
+              },
+              required: ["isNew", "name"]
+            }
+          }
+        },
+        required: ["name", "ingredients", "reasoning"]
+      };
+      if (wantInstructions) {
+        responseSchema.properties.instructions = { type: "ARRAY", items: { type: "STRING" } };
+        responseSchema.required.push("instructions");
+      }
 
       const payload = {
         contents: [{ parts: [{ text: promptText }] }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              name: { type: "STRING" }, reasoning: { type: "STRING" },
-              ingredients: {
-                type: "ARRAY",
-                items: {
-                  type: "OBJECT",
-                  properties: {
-                    isNew: { type: "BOOLEAN" }, id: { type: "INTEGER" }, name: { type: "STRING" },
-                    kcal: { type: "NUMBER" }, p: { type: "NUMBER" }, c: { type: "NUMBER" }, f: { type: "NUMBER" },
-                    defaultGrams: { type: "NUMBER" }
-                  },
-                  required: ["isNew", "name"]
-                }
-              }
-            },
-            required: ["name", "ingredients", "reasoning"]
-          }
-        }
+        generationConfig: { responseMimeType: "application/json", responseSchema }
       };
 
       const data = await fetchWithRetry(WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -640,7 +647,8 @@ export default function App() {
         name: aiRecipeResult.name + (isCreativeMode ? ' ✨' : ''),
         ingredients: processedIds.map((foodId, idx) => ({
           id: Date.now() + idx, foodId, grams: currentDb.find(f => f.id === foodId)?.defaultGrams || 100
-        }))
+        })),
+        instructions: aiRecipeResult.instructions || null,
       }]
     }));
     setSearchQuery(''); setAiRecipeResult(null); setIsCreativeMode(false); setExpandedDay(day);
@@ -1127,6 +1135,12 @@ export default function App() {
             </button>
           </div>
 
+          <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none w-fit">
+            <input type="checkbox" checked={wantInstructions} onChange={(e) => setWantInstructions(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-400 cursor-pointer" />
+            <span>📋 Mit Schritt-für-Schritt-Anleitung</span>
+          </label>
+
           {searchQuery.length >= 2 && suggestedRecipes.length > 0 && !aiRecipeResult && !isCreativeMode && (
             <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
               <h4 className="text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">Standard-Gerichte</h4>
@@ -1166,6 +1180,15 @@ export default function App() {
                   ))}
                 </ul>
               </div>
+
+              {aiRecipeResult.instructions && aiRecipeResult.instructions.length > 0 && (
+                <div className="bg-white/70 rounded-lg p-3 mb-3 border border-slate-200">
+                  <span className="font-bold text-sm text-slate-700 flex items-center gap-1.5">📋 Anleitung:</span>
+                  <ol className="list-decimal pl-5 text-sm mt-2 space-y-1.5 text-slate-700">
+                    {aiRecipeResult.instructions.map((step, i) => <li key={i}>{step}</li>)}
+                  </ol>
+                </div>
+              )}
               <div className="flex gap-2 items-center">
                 <span className="text-xs font-medium text-slate-500">Übernehmen für:</span>
                 <select className="text-sm border border-slate-300 rounded-lg px-2 py-1.5 bg-white flex-1 focus:ring-2 outline-none"
@@ -1270,6 +1293,18 @@ export default function App() {
                                 <option value="" disabled>+ Zutat hinzufügen...</option>
                                 {foodDb.map(food => <option key={food.id} value={food.id}>{food.name}</option>)}
                               </select>
+
+                              {meal.instructions && meal.instructions.length > 0 && (
+                                <details className="mt-3 group">
+                                  <summary className="cursor-pointer text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1.5 select-none">
+                                    📋 Schritt-für-Schritt-Anleitung
+                                    <ChevronRight size={12} className="transition-transform group-open:rotate-90" />
+                                  </summary>
+                                  <ol className="list-decimal pl-5 text-sm mt-2 space-y-1.5 text-slate-700 bg-blue-50/60 p-3 rounded-lg border border-blue-100">
+                                    {meal.instructions.map((step, i) => <li key={i}>{step}</li>)}
+                                  </ol>
+                                </details>
+                              )}
                             </div>
                           );
                         })}
