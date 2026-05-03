@@ -4,6 +4,7 @@ import { Plus, Trash2, ChevronDown, ChevronRight, Calculator, Search, Wand2, Bot
 const WORKER_URL = 'https://meal-scale-proxy.sanktannagymnasium.workers.dev';
 
 const INITIAL_DB = [
+  // Original 10
   { id: 1, name: 'Hähnchenbrust', kcal: 165, p: 31, c: 0, f: 3.6, defaultGrams: 150 },
   { id: 2, name: 'Reis (ungekocht)', kcal: 350, p: 7, c: 78, f: 1, defaultGrams: 80 },
   { id: 3, name: 'Brokkoli', kcal: 34, p: 2.8, c: 7, f: 0.2, defaultGrams: 150 },
@@ -14,7 +15,83 @@ const INITIAL_DB = [
   { id: 8, name: 'Eier', kcal: 155, p: 13, c: 1, f: 11, defaultGrams: 110 },
   { id: 9, name: 'Kartoffeln', kcal: 77, p: 2, c: 17, f: 0.1, defaultGrams: 250 },
   { id: 10, name: 'Rinderhack (light)', kcal: 160, p: 21, c: 0, f: 8, defaultGrams: 150 },
+
+  // Tierische Proteine
+  { id: 100, name: 'Putenbrust', kcal: 110, p: 24, c: 0, f: 1.5, defaultGrams: 150 },
+  { id: 101, name: 'Lachsfilet', kcal: 200, p: 20, c: 0, f: 13, defaultGrams: 130 },
+  { id: 102, name: 'Thunfisch (Dose, Wasser)', kcal: 116, p: 26, c: 0, f: 1, defaultGrams: 80 },
+  { id: 103, name: 'Garnelen', kcal: 99, p: 24, c: 0, f: 0.3, defaultGrams: 120 },
+  { id: 104, name: 'Hüttenkäse (körnig)', kcal: 100, p: 12, c: 2.5, f: 4.5, defaultGrams: 200 },
+  { id: 105, name: 'Skyr (natur)', kcal: 65, p: 11, c: 4, f: 0.2, defaultGrams: 200 },
+  { id: 106, name: 'Mozzarella light', kcal: 220, p: 28, c: 1, f: 12, defaultGrams: 100 },
+  { id: 107, name: 'Schweinefilet', kcal: 142, p: 22, c: 0, f: 5, defaultGrams: 150 },
+  { id: 108, name: 'Putenhack', kcal: 130, p: 22, c: 0, f: 4.5, defaultGrams: 150 },
+  { id: 109, name: 'Hähnchenschenkel', kcal: 215, p: 25, c: 0, f: 13, defaultGrams: 150 },
+
+  // Pflanzliche Proteine
+  { id: 110, name: 'Tofu (natur)', kcal: 76, p: 8, c: 1.9, f: 4.8, defaultGrams: 150 },
+  { id: 111, name: 'Kichererbsen (gekocht)', kcal: 164, p: 9, c: 27, f: 2.6, defaultGrams: 150 },
+  { id: 112, name: 'Linsen (rot, gekocht)', kcal: 116, p: 9, c: 20, f: 0.4, defaultGrams: 150 },
+
+  // Carbs
+  { id: 113, name: 'Vollkornnudeln (trocken)', kcal: 343, p: 13, c: 66, f: 2.5, defaultGrams: 80 },
+  { id: 114, name: 'Pasta (trocken)', kcal: 360, p: 12, c: 72, f: 1.5, defaultGrams: 80 },
+  { id: 115, name: 'Quinoa (trocken)', kcal: 368, p: 14, c: 64, f: 6, defaultGrams: 70 },
+  { id: 116, name: 'Süßkartoffel', kcal: 86, p: 1.6, c: 20, f: 0.1, defaultGrams: 250 },
+  { id: 117, name: 'Vollkornbrot', kcal: 245, p: 9, c: 42, f: 4, defaultGrams: 80 },
+  { id: 118, name: 'Vollkornreis (trocken)', kcal: 357, p: 7.5, c: 76, f: 2.7, defaultGrams: 80 },
+  { id: 119, name: 'Couscous (trocken)', kcal: 376, p: 13, c: 72, f: 1.9, defaultGrams: 70 },
+  { id: 120, name: 'Wrap (Weizen)', kcal: 290, p: 9, c: 50, f: 6, defaultGrams: 60 },
+  { id: 121, name: 'Brötchen (Weizen)', kcal: 274, p: 9, c: 53, f: 2, defaultGrams: 50 },
+
+  // Gemüse
+  { id: 122, name: 'Möhren', kcal: 41, p: 0.9, c: 9.6, f: 0.2, defaultGrams: 150 },
+  { id: 123, name: 'Zucchini', kcal: 17, p: 1.2, c: 3.1, f: 0.3, defaultGrams: 200 },
+  { id: 124, name: 'Paprika (rot)', kcal: 31, p: 1, c: 6, f: 0.3, defaultGrams: 150 },
+  { id: 125, name: 'Spinat (frisch)', kcal: 23, p: 2.9, c: 3.6, f: 0.4, defaultGrams: 100 },
+  { id: 126, name: 'Tomaten', kcal: 18, p: 0.9, c: 3.9, f: 0.2, defaultGrams: 150 },
+  { id: 127, name: 'Gurke', kcal: 16, p: 0.7, c: 3.6, f: 0.1, defaultGrams: 100 },
+  { id: 128, name: 'Champignons', kcal: 22, p: 3.1, c: 3.3, f: 0.3, defaultGrams: 150 },
+  { id: 129, name: 'Zwiebel', kcal: 40, p: 1.1, c: 9.3, f: 0.1, defaultGrams: 50 },
+  { id: 130, name: 'Blumenkohl', kcal: 25, p: 1.9, c: 5, f: 0.3, defaultGrams: 200 },
+  { id: 131, name: 'Aubergine', kcal: 25, p: 1, c: 6, f: 0.2, defaultGrams: 200 },
+
+  // Obst
+  { id: 132, name: 'Banane', kcal: 89, p: 1.1, c: 23, f: 0.3, defaultGrams: 120 },
+  { id: 133, name: 'Apfel', kcal: 52, p: 0.3, c: 14, f: 0.2, defaultGrams: 150 },
+  { id: 134, name: 'Heidelbeeren', kcal: 57, p: 0.7, c: 14, f: 0.3, defaultGrams: 100 },
+  { id: 135, name: 'Erdbeeren', kcal: 32, p: 0.7, c: 7.7, f: 0.3, defaultGrams: 150 },
+  { id: 136, name: 'Orange', kcal: 47, p: 0.9, c: 12, f: 0.1, defaultGrams: 150 },
+
+  // Milchprodukte
+  { id: 137, name: 'Milch (1.5%)', kcal: 49, p: 3.4, c: 4.8, f: 1.6, defaultGrams: 200 },
+  { id: 138, name: 'Joghurt natur (1.5%)', kcal: 50, p: 3.5, c: 4, f: 1.5, defaultGrams: 150 },
+  { id: 139, name: 'Joghurt griechisch (10%)', kcal: 115, p: 9, c: 4, f: 7, defaultGrams: 150 },
+  { id: 140, name: 'Gouda mittelalt', kcal: 356, p: 25, c: 0, f: 28, defaultGrams: 30 },
+  { id: 141, name: 'Butter', kcal: 717, p: 0.9, c: 0.6, f: 81, defaultGrams: 10 },
+
+  // Fette / Nüsse
+  { id: 142, name: 'Erdnussbutter (natur)', kcal: 588, p: 25, c: 20, f: 50, defaultGrams: 20 },
+  { id: 143, name: 'Walnüsse', kcal: 654, p: 15, c: 14, f: 65, defaultGrams: 25 },
+  { id: 144, name: 'Mandeln', kcal: 579, p: 21, c: 22, f: 50, defaultGrams: 25 },
+  { id: 145, name: 'Avocado', kcal: 160, p: 2, c: 9, f: 15, defaultGrams: 100 },
+  { id: 146, name: 'Rapsöl', kcal: 884, p: 0, c: 0, f: 100, defaultGrams: 10 },
+
+  // Sonstiges
+  { id: 147, name: 'Honig', kcal: 304, p: 0.3, c: 82, f: 0, defaultGrams: 15 },
+  { id: 148, name: 'Tomaten (passiert)', kcal: 35, p: 1.7, c: 7, f: 0.2, defaultGrams: 200 },
+  { id: 149, name: 'Apfelmus (ungezuckert)', kcal: 41, p: 0.2, c: 10, f: 0.1, defaultGrams: 100 },
 ];
+
+const STANDARD_IDS = new Set(INITIAL_DB.map(f => f.id));
+const isStandardFood = (id) => STANDARD_IDS.has(id);
+
+const ensureStandardFoods = (userFoodDb) => {
+  if (!Array.isArray(userFoodDb) || userFoodDb.length === 0) return INITIAL_DB;
+  const existing = new Set(userFoodDb.map(f => f.id));
+  const missing = INITIAL_DB.filter(f => !existing.has(f.id));
+  return missing.length === 0 ? userFoodDb : [...userFoodDb, ...missing];
+};
 
 const RECIPE_DB = [
   { id: 1, name: 'Hähnchen-Brokkoli-Pfanne', ingredients: [1, 2, 3, 4] },
@@ -183,7 +260,7 @@ const PinBoxes = ({ value, length = 4, focused }) => (
 export default function App() {
   // Data states
   const [dailyTarget, setDailyTarget] = useState(saved.dailyTarget ?? 2400);
-  const [foodDb, setFoodDb] = useState(saved.foodDb ?? INITIAL_DB);
+  const [foodDb, setFoodDb] = useState(ensureStandardFoods(saved.foodDb ?? INITIAL_DB));
   const [plan, setPlan] = useState(saved.plan ?? emptyPlan());
   const [expandedDay, setExpandedDay] = useState(getTodayKey());
 
@@ -281,7 +358,7 @@ export default function App() {
       const { data } = await r.json();
       if (data) {
         if (data.dailyTarget != null) setDailyTarget(data.dailyTarget);
-        if (data.foodDb) setFoodDb(data.foodDb);
+        if (data.foodDb) setFoodDb(ensureStandardFoods(data.foodDb));
         if (data.plan) setPlan(data.plan);
         if (data.userGender) setUserGender(data.userGender);
         if (data.userAge != null) setUserAge(data.userAge);
@@ -570,7 +647,7 @@ export default function App() {
   };
 
   const removeFood = (id) => {
-    if (id <= 10) return; // Schutz für die 10 Standard-Zutaten
+    if (isStandardFood(id)) return; // Standard-Zutaten sind geschützt
     setFoodDb(foodDb.filter(f => f.id !== id));
   };
 
@@ -851,11 +928,11 @@ export default function App() {
                 </button>
               </div>
 
-              {foodDb.filter(f => f.id > 10).length > 0 && (
+              {foodDb.filter(f => !isStandardFood(f.id)).length > 0 && (
                 <div className="mt-4">
                   <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Eigene + KI-Zutaten</span>
                   <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
-                    {foodDb.filter(f => f.id > 10).map(f => (
+                    {foodDb.filter(f => !isStandardFood(f.id)).map(f => (
                       <div key={f.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm">
                         <span className="font-medium text-slate-700 truncate flex-1">{f.name}</span>
                         <span className="text-xs text-slate-500 tabular-nums shrink-0 ml-2">{Math.round(f.kcal)} kcal · P{Math.round(f.p)} K{Math.round(f.c)} F{Math.round(f.f)}</span>
