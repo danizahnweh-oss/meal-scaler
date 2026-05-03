@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronRight, Calculator, Search, Wand2, Bot, Loader2, Target, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Calculator, Search, Wand2, Bot, Loader2, Target, ToggleLeft, ToggleRight, Settings, X } from 'lucide-react';
 
 const WORKER_URL = 'https://meal-scale-proxy.sanktannagymnasium.workers.dev';
 
-// Standard-Datenbank MIT realistischen Standard-Portionsgrößen (defaultGrams)
 const INITIAL_DB = [
   { id: 1, name: 'Hähnchenbrust', kcal: 165, p: 31, c: 0, f: 3.6, defaultGrams: 150 },
   { id: 2, name: 'Reis (ungekocht)', kcal: 350, p: 7, c: 78, f: 1, defaultGrams: 80 },
@@ -25,37 +24,65 @@ const RECIPE_DB = [
 
 const DAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 
+const STORAGE_KEY = 'meal_scaler_state_v1';
+
+const loadSaved = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+const saved = loadSaved();
+
+const emptyPlan = () => DAYS.reduce((acc, day) => ({ ...acc, [day]: [] }), {});
+
 export default function App() {
-  const [dailyTarget, setDailyTarget] = useState(2400);
-  const [foodDb, setFoodDb] = useState(INITIAL_DB);
-  const [plan, setPlan] = useState(DAYS.reduce((acc, day) => ({ ...acc, [day]: [] }), {}));
+  const [dailyTarget, setDailyTarget] = useState(saved.dailyTarget ?? 2400);
+  const [foodDb, setFoodDb] = useState(saved.foodDb ?? INITIAL_DB);
+  const [plan, setPlan] = useState(saved.plan ?? emptyPlan());
   const [expandedDay, setExpandedDay] = useState('Montag');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestedRecipes, setSuggestedRecipes] = useState([]);
 
-  // KI States
-  const [isEmergencyMode, setIsEmergencyMode] = useState(false);
+  const [isCreativeMode, setIsCreativeMode] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiRecipeResult, setAiRecipeResult] = useState(null);
   const [aiError, setAiError] = useState('');
 
-  // Flexibler Makro-Rechner State (Ohne Profil-Dropdown)
   const [showMacroCalc, setShowMacroCalc] = useState(false);
-  const [userGender, setUserGender] = useState('male');
-  const [userAge, setUserAge] = useState(33);
-  const [userHeight, setUserHeight] = useState(181);
-  const [userWeight, setUserWeight] = useState(98.8);
-  const [activityFactor, setActivityFactor] = useState(1.375);
-  const [goalDeficit, setGoalDeficit] = useState(-500);
+  const [showSettings, setShowSettings] = useState(false);
 
-  // Kalorienberechnung (Mifflin-St Jeor Formel)
+  const [userGender, setUserGender] = useState(saved.userGender ?? 'male');
+  const [userAge, setUserAge] = useState(saved.userAge ?? 33);
+  const [userHeight, setUserHeight] = useState(saved.userHeight ?? 181);
+  const [userWeight, setUserWeight] = useState(saved.userWeight ?? 98.8);
+  const [activityFactor, setActivityFactor] = useState(saved.activityFactor ?? 1.375);
+  const [goalDeficit, setGoalDeficit] = useState(saved.goalDeficit ?? -500);
+
+  const [excluded, setExcluded] = useState(saved.excluded ?? []);
+  const [pantry, setPantry] = useState(saved.pantry ?? []);
+  const [excludedInput, setExcludedInput] = useState('');
+  const [pantryInput, setPantryInput] = useState('');
+
   const bmr = userGender === 'male'
     ? (10 * userWeight) + (6.25 * userHeight) - (5 * userAge) + 5
     : (10 * userWeight) + (6.25 * userHeight) - (5 * userAge) - 161;
 
   const tdee = bmr * activityFactor;
   const calculatedTarget = Math.round(tdee + goalDeficit);
+
+  // Persistenz
+  useEffect(() => {
+    const state = {
+      dailyTarget, foodDb, plan,
+      userGender, userAge, userHeight, userWeight, activityFactor, goalDeficit,
+      excluded, pantry,
+    };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+  }, [dailyTarget, foodDb, plan, userGender, userAge, userHeight, userWeight, activityFactor, goalDeficit, excluded, pantry]);
 
   useEffect(() => {
     if (searchQuery.length < 2) {
@@ -90,9 +117,18 @@ export default function App() {
 
     try {
       const dbContext = foodDb.map(f => ({ id: f.id, name: f.name }));
-      const promptText = isEmergencyMode
-        ? `Der User sucht nach einem Rezept für: "${searchQuery}". Dies ist ein NOTFALL-Modus. Du darfst völlig NEUE Zutaten erfinden, die nicht in der Datenbank sind. Liefere für jede neue Zutat realistische Makronährwerte (kcal, p, c, f) pro 100g UND eine realistische Standard-Portionsgröße in Gramm (defaultGrams) für eine Person mit. Bekannte Zutaten aus dieser Liste dürfen auch genutzt werden: ${JSON.stringify(dbContext)}`
-        : `Der User sucht nach einem Rezept für: "${searchQuery}". WICHTIG: Du bist im STRUKTUR-MODUS. Du darfst AUSSCHLIESSLICH Zutaten aus dieser Liste verwenden: ${JSON.stringify(dbContext)}. Erfinde KEINE neuen Zutaten!`;
+      const pantryHint = pantry.length > 0
+        ? ` Der User hat folgende Zutaten IMMER zu Hause — bevorzuge diese wenn sinnvoll: ${pantry.join(', ')}.`
+        : '';
+      const excludedHint = excluded.length > 0
+        ? ` UNVERTRÄGLICHKEITEN: Verwende NIEMALS diese Zutaten oder Bestandteile davon: ${excluded.join(', ')}.`
+        : '';
+
+      const baseInstruction = `Erstelle ein echtes, sinnvoll kombiniertes Gericht (kein Zutat-Wirrwarr). Nutze möglichst viele passende Zutaten der Liste. Bevorzuge eine HIGH-PROTEIN Komposition.`;
+
+      const promptText = isCreativeMode
+        ? `Der User sucht nach einem Rezept für: "${searchQuery}". KREATIV-MODUS: Du darfst völlig NEUE Zutaten erfinden, die nicht in der Datenbank sind. Liefere für jede neue Zutat realistische Makronährwerte (kcal, p, c, f) pro 100g UND eine realistische Standard-Portionsgröße in Gramm (defaultGrams). Bekannte Zutaten dürfen ebenfalls genutzt werden. ${baseInstruction} Bekannte Zutaten: ${JSON.stringify(dbContext)}.${pantryHint}${excludedHint}`
+        : `Der User sucht nach einem Rezept für: "${searchQuery}". STRUKTUR-MODUS: Du darfst AUSSCHLIESSLICH Zutaten aus der bereitgestellten Liste verwenden — KEINE neuen erfinden. ${baseInstruction} Liste: ${JSON.stringify(dbContext)}.${pantryHint}${excludedHint}`;
 
       const payload = {
         contents: [{ parts: [{ text: promptText }] }],
@@ -172,7 +208,7 @@ export default function App() {
     setPlan(prev => ({
       ...prev, [day]: [...prev[day], {
         id: Date.now(),
-        name: aiRecipeResult.name + (isEmergencyMode ? ' ⚠️ (Notfall)' : ''),
+        name: aiRecipeResult.name + (isCreativeMode ? ' ✨ (Kreativ)' : ''),
         ingredients: processedIngredientIds.map((foodId, idx) => ({
           id: Date.now() + idx,
           foodId: foodId,
@@ -183,7 +219,7 @@ export default function App() {
 
     setSearchQuery('');
     setAiRecipeResult(null);
-    setIsEmergencyMode(false);
+    setIsCreativeMode(false);
     setExpandedDay(day);
   };
 
@@ -229,6 +265,12 @@ export default function App() {
     }));
   };
 
+  const updateMealName = (day, mealId, name) => {
+    setPlan((prev) => ({
+      ...prev, [day]: prev[day].map((meal) => meal.id === mealId ? { ...meal, name } : meal)
+    }));
+  };
+
   const addIngredient = (day, mealId, foodId) => {
     setPlan((prev) => ({
       ...prev, [day]: prev[day].map((meal) => meal.id === mealId ? {
@@ -267,6 +309,22 @@ export default function App() {
     }));
   };
 
+  const addExcluded = () => {
+    const v = excludedInput.trim();
+    if (!v) return;
+    if (excluded.includes(v)) return;
+    setExcluded([...excluded, v]);
+    setExcludedInput('');
+  };
+
+  const addPantry = () => {
+    const v = pantryInput.trim();
+    if (!v) return;
+    if (pantry.includes(v)) return;
+    setPantry([...pantry, v]);
+    setPantryInput('');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-800">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -287,16 +345,112 @@ export default function App() {
                 className="w-24 px-2 py-1 rounded border border-slate-300 text-center font-bold focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
-            <button
-              onClick={() => setShowMacroCalc(!showMacroCalc)}
-              className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1"
-            >
-              <Target size={14} /> Bedarf berechnen
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowMacroCalc(!showMacroCalc)}
+                className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1"
+              >
+                <Target size={14} /> Bedarf berechnen
+              </button>
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="text-xs text-amber-600 font-medium hover:underline flex items-center gap-1"
+              >
+                <Settings size={14} /> Einstellungen
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Kalorienbedarf-Rechner (Flexibel, ohne Profil-Dropdown) */}
+        {/* Einstellungen — Unverträglichkeiten + Vorrat */}
+        {showSettings && (
+          <div className="bg-amber-50 p-6 rounded-xl border border-amber-200 shadow-sm space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-amber-900 flex items-center gap-2">
+                <Settings size={20} /> Einstellungen
+              </h3>
+              <button onClick={() => setShowSettings(false)} className="text-amber-900 hover:text-amber-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-amber-800 uppercase">
+                Unverträglichkeiten / Diese Zutaten NIE verwenden
+              </label>
+              <p className="text-xs text-amber-700 mt-1 mb-2">Die KI vermeidet diese Zutaten und ihre Bestandteile in jedem Vorschlag.</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="z.B. Laktose, Erdnüsse, Schweinefleisch"
+                  value={excludedInput}
+                  onChange={(e) => setExcludedInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addExcluded()}
+                  className="flex-1 px-3 py-2 border border-amber-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                />
+                <button
+                  onClick={addExcluded}
+                  className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                >
+                  <Plus size={16} className="inline" /> Hinzufügen
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {excluded.length === 0 && <span className="text-sm text-amber-700 italic">Noch nichts eingetragen</span>}
+                {excluded.map((item, i) => (
+                  <span key={i} className="bg-white border border-amber-300 rounded-full px-3 py-1 text-sm flex items-center gap-2">
+                    {item}
+                    <button
+                      onClick={() => setExcluded(excluded.filter((_, idx) => idx !== i))}
+                      className="text-amber-600 hover:text-red-500"
+                    >
+                      <X size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-amber-800 uppercase">
+                Immer zuhause / Diese Zutaten bevorzugen
+              </label>
+              <p className="text-xs text-amber-700 mt-1 mb-2">Die KI versucht, Vorschläge mit diesen Zutaten zu bauen wenn sinnvoll.</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="z.B. Eier, Reis, Olivenöl, Hähnchenbrust"
+                  value={pantryInput}
+                  onChange={(e) => setPantryInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addPantry()}
+                  className="flex-1 px-3 py-2 border border-amber-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                />
+                <button
+                  onClick={addPantry}
+                  className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                >
+                  <Plus size={16} className="inline" /> Hinzufügen
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {pantry.length === 0 && <span className="text-sm text-amber-700 italic">Noch nichts eingetragen</span>}
+                {pantry.map((item, i) => (
+                  <span key={i} className="bg-white border border-amber-300 rounded-full px-3 py-1 text-sm flex items-center gap-2">
+                    {item}
+                    <button
+                      onClick={() => setPantry(pantry.filter((_, idx) => idx !== i))}
+                      className="text-amber-600 hover:text-red-500"
+                    >
+                      <X size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Kalorienbedarf-Rechner */}
         {showMacroCalc && (
           <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 shadow-sm space-y-4">
             <h3 className="font-bold text-blue-900 flex items-center gap-2">
@@ -371,11 +525,11 @@ export default function App() {
             </div>
 
             <button
-              onClick={() => setIsEmergencyMode(!isEmergencyMode)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${isEmergencyMode ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-slate-100 border-slate-200 text-slate-600'}`}
+              onClick={() => setIsCreativeMode(!isCreativeMode)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${isCreativeMode ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-slate-100 border-slate-200 text-slate-600'}`}
             >
-              {isEmergencyMode ? <ToggleRight className="text-orange-600" size={18}/> : <ToggleLeft size={18}/>}
-              {isEmergencyMode ? 'Notfall-Modus aktiv' : 'Struktur-Modus'}
+              {isCreativeMode ? <ToggleRight className="text-purple-600" size={18}/> : <ToggleLeft size={18}/>}
+              {isCreativeMode ? 'Kreativmodus aktiv' : 'Struktur-Modus'}
             </button>
           </div>
 
@@ -384,17 +538,17 @@ export default function App() {
               <Search className="absolute left-3 top-3 text-slate-400" size={20} />
               <input
                 type="text"
-                placeholder={isEmergencyMode ? "Notfall: Worauf hast du Lust?" : "Tippe ein Gericht oder eine Zutat..."}
+                placeholder={isCreativeMode ? "Kreativ: Worauf hast du Lust?" : "Tippe ein Gericht oder eine Zutat..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && askAIForsuggestion()}
-                className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-lg focus:ring-2 outline-none transition-all ${isEmergencyMode ? 'border-orange-300 focus:ring-orange-500' : 'border-slate-300 focus:ring-blue-500'}`}
+                className={`w-full pl-10 pr-4 py-3 bg-slate-50 border rounded-lg focus:ring-2 outline-none transition-all ${isCreativeMode ? 'border-purple-300 focus:ring-purple-500' : 'border-slate-300 focus:ring-blue-500'}`}
               />
             </div>
             <button
               onClick={askAIForsuggestion}
               disabled={isGeneratingAI || searchQuery.length < 2}
-              className={`${isEmergencyMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 font-medium`}
+              className={`${isCreativeMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 font-medium`}
             >
               {isGeneratingAI ? <Loader2 size={20} className="animate-spin" /> : <Bot size={20} />}
               KI fragen
@@ -402,7 +556,7 @@ export default function App() {
           </div>
 
           {/* Lokale Suchergebnisse im Struktur-Modus */}
-          {searchQuery.length >= 2 && suggestedRecipes.length > 0 && !aiRecipeResult && !isEmergencyMode && (
+          {searchQuery.length >= 2 && suggestedRecipes.length > 0 && !aiRecipeResult && !isCreativeMode && (
              <div className="mt-4 p-4 bg-slate-50 border border-slate-100 rounded-lg shadow-sm">
                <h4 className="text-sm font-bold text-slate-500 mb-3 uppercase tracking-wider">Gefundene Standard-Gerichte</h4>
                <div className="space-y-2">
@@ -432,17 +586,17 @@ export default function App() {
 
           {/* KI Ergebnis */}
           {aiRecipeResult && (
-            <div className={`mt-4 p-4 border rounded-lg shadow-sm ${isEmergencyMode ? 'bg-orange-50 border-orange-100' : 'bg-indigo-50 border-indigo-100'}`}>
-              <div className={`flex items-center gap-2 font-bold mb-1 ${isEmergencyMode ? 'text-orange-700' : 'text-indigo-700'}`}>
+            <div className={`mt-4 p-4 border rounded-lg shadow-sm ${isCreativeMode ? 'bg-purple-50 border-purple-100' : 'bg-indigo-50 border-indigo-100'}`}>
+              <div className={`flex items-center gap-2 font-bold mb-1 ${isCreativeMode ? 'text-purple-700' : 'text-indigo-700'}`}>
                 <Bot size={18} /> KI Vorschlag: {aiRecipeResult.name}
               </div>
-              <p className={`text-sm mb-3 italic ${isEmergencyMode ? 'text-orange-600' : 'text-indigo-600'}`}>"{aiRecipeResult.reasoning}"</p>
+              <p className={`text-sm mb-3 italic ${isCreativeMode ? 'text-purple-600' : 'text-indigo-600'}`}>"{aiRecipeResult.reasoning}"</p>
 
               <div className="text-sm text-slate-600 mb-3 space-y-1">
                 <span className="font-semibold">Benötigte Zutaten:</span>
                 <ul className="list-disc pl-5">
                   {aiRecipeResult.ingredients.map((ing, i) => (
-                    <li key={i} className={ing.isNew ? 'text-orange-700 font-medium' : ''}>
+                    <li key={i} className={ing.isNew ? 'text-purple-700 font-medium' : ''}>
                       {ing.name} {ing.isNew && '(Neu!)'}
                     </li>
                   ))}
@@ -469,7 +623,6 @@ export default function App() {
           {DAYS.map((day) => {
             const isExpanded = expandedDay === day;
             const totals = getDayTotals(plan[day]);
-            const progress = Math.min((totals.kcal / dailyTarget) * 100, 100);
 
             return (
               <div key={day} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -492,7 +645,8 @@ export default function App() {
                           <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
                             <input
                               type="text"
-                              defaultValue={meal.name}
+                              value={meal.name}
+                              onChange={(e) => updateMealName(day, meal.id, e.target.value)}
                               className="font-semibold text-slate-700 bg-transparent outline-none focus:border-b-2 focus:border-blue-500 w-full"
                             />
                             <button onClick={() => removeMeal(day, meal.id)} className="text-slate-400 hover:text-red-500 ml-4"><Trash2 size={16} /></button>
