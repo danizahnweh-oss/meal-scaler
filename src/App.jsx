@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronRight, Calculator, Search, Wand2, Bot, Loader2, Target, KeyRound, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Calculator, Search, Wand2, Bot, Loader2, Target, ToggleLeft, ToggleRight } from 'lucide-react';
+
+const WORKER_URL = 'https://meal-scale-proxy.sanktannagymnasium.workers.dev';
 
 // Standard-Datenbank MIT realistischen Standard-Portionsgrößen (defaultGrams)
 const INITIAL_DB = [
@@ -31,10 +33,6 @@ export default function App() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestedRecipes, setSuggestedRecipes] = useState([]);
-
-  // API Key lokal speichern (Sicherheit für GitHub Hosting)
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   // KI States
   const [isEmergencyMode, setIsEmergencyMode] = useState(false);
@@ -70,12 +68,6 @@ export default function App() {
     setSuggestedRecipes(RECIPE_DB.filter(r => r.name.toLowerCase().includes(query)));
   }, [searchQuery]);
 
-  const saveApiKey = (key) => {
-    setApiKey(key);
-    localStorage.setItem('gemini_api_key', key);
-    setShowApiKeyInput(false);
-  };
-
   const fetchWithRetry = async (url, options, retries = 3) => {
     for (let i = 0; i < retries; i++) {
       try {
@@ -91,10 +83,6 @@ export default function App() {
 
   const askAIForsuggestion = async () => {
     if (!searchQuery) return;
-    if (!apiKey) {
-      setShowApiKeyInput(true);
-      return;
-    }
 
     setIsGeneratingAI(true);
     setAiError('');
@@ -139,7 +127,7 @@ export default function App() {
       };
 
       const data = await fetchWithRetry(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`,
+        WORKER_URL,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
       );
 
@@ -151,12 +139,7 @@ export default function App() {
       }
     } catch (err) {
       console.error(err);
-      if (err.message.includes('400') || err.message.includes('API key')) {
-        setAiError('API Key ist ungültig. Bitte überprüfe deine Eingabe.');
-        setShowApiKeyInput(true);
-      } else {
-        setAiError('KI Fehler. Bitte probiere es später erneut.');
-      }
+      setAiError('KI Fehler. Bitte probiere es später erneut.');
     } finally {
       setIsGeneratingAI(false);
     }
@@ -379,7 +362,7 @@ export default function App() {
           </div>
         )}
 
-        {/* KI Assistent & API Key Eingabe */}
+        {/* KI Assistent */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 text-blue-600 font-semibold">
@@ -387,41 +370,14 @@ export default function App() {
               <h3>Rezept & KI Assistent</h3>
             </div>
 
-            <div className="flex gap-4 items-center">
-              <button
-                onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-                className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1"
-              >
-                <KeyRound size={14} /> API Key {apiKey ? 'ändern' : 'eintragen'}
-              </button>
-
-              <button
-                onClick={() => setIsEmergencyMode(!isEmergencyMode)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${isEmergencyMode ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-slate-100 border-slate-200 text-slate-600'}`}
-              >
-                {isEmergencyMode ? <ToggleRight className="text-orange-600" size={18}/> : <ToggleLeft size={18}/>}
-                {isEmergencyMode ? 'Notfall-Modus aktiv' : 'Struktur-Modus'}
-              </button>
-            </div>
+            <button
+              onClick={() => setIsEmergencyMode(!isEmergencyMode)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${isEmergencyMode ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-slate-100 border-slate-200 text-slate-600'}`}
+            >
+              {isEmergencyMode ? <ToggleRight className="text-orange-600" size={18}/> : <ToggleLeft size={18}/>}
+              {isEmergencyMode ? 'Notfall-Modus aktiv' : 'Struktur-Modus'}
+            </button>
           </div>
-
-          {showApiKeyInput && (
-            <div className="bg-slate-100 p-4 rounded-lg border border-slate-200 mb-4">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Google Gemini API Key (wird nur lokal im Browser gespeichert):</label>
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  placeholder="AIzaSy..."
-                  className="flex-1 px-3 py-2 border border-slate-300 rounded outline-none focus:ring-2 focus:ring-blue-500"
-                  onKeyDown={(e) => e.key === 'Enter' && saveApiKey(e.target.value)}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  value={apiKey}
-                />
-                <button onClick={() => saveApiKey(apiKey)} className="bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700">Speichern</button>
-              </div>
-              <p className="text-xs text-slate-500 mt-2">Um die KI-Funktion zu nutzen, benötigst du einen kostenlosen Gemini API Key. Wenn du diesen Code auf GitHub hostest, ist er so vor Diebstahl sicher.</p>
-            </div>
-          )}
 
           <div className="flex gap-2">
             <div className="relative flex-1">
