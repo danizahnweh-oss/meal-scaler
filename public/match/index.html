@@ -917,6 +917,7 @@ function renderAll(){ renderExcl(); renderHeader(); renderDeck(); if(tab==="matc
 /* ---------- Tabs ---------- */
 function setTab(t){
   tab=t;
+  if(embedded)parent.postMessage({type:'tm:tab-changed',tab:t},location.origin);
   ["swipe","matches","more"].forEach(v=>{ $(v).hidden = v!==t; });
   document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===t)));
   if(t==="matches") renderMatches();

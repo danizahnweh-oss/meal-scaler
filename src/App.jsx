@@ -110,6 +110,7 @@ export default function App() {
           if (e.data.state.connected && location.hash.startsWith("#einladung="))
             history.replaceState(null, "", location.pathname);
         }
+        if (e.data.type === "tm:tab-changed" && ['swipe','matches','more'].includes(e.data.tab)) setScreen(previous=>['swipe','matches','more'].includes(previous)?e.data.tab:previous);
         if (e.data.type === "tm:recipe") {
           setSelection(e.data.id);
           setScreen("recipe");
