@@ -7,6 +7,7 @@ Live: **https://whats4dinner.party** (bestehende GitHub-Pages-Adresse dieses Rep
 ## Auf euren Handys
 
 1. Auf jedem bisher verwendeten Handy die neue App öffnen und unter **Mehr → Teller-Match übernehmen** die Übernahme bestätigen. Die ursprüngliche GitHub-Pages-Seite muss dabei im selben Browser geöffnet werden, in dem die bisherigen Daten gespeichert sind. Die Anmeldung wechselt zur neuen Adresse; Bewertungen, Gerichte, private Fotos, Wiederherstellungscodes und ausstehende Änderungen behalten ihre Kennungen. Lokale Daten bleiben gesichert.
+   Falls das Fenster blockiert wird: Unter **Mehr → Übernahme ohne neues Fenster** auf der alten Seite die private Sicherung herunterladen und in der neuen App auswählen. Die Datei enthält die persönliche Anmeldung und Fotos. Nicht weitergeben; nach erfolgreicher Übernahme die alte Seite schließen.
 2. Wenn ihr bisher noch keinen gemeinsamen Bereich verwendet habt: einen Bereich erstellen und die zweite Person über einen einmaligen Einladungslink hinzufügen. Nicht zwei getrennte Bereiche erstellen.
 3. **Mein Ziel**: Daniel und Stina speichern jeweils ihr eigenes Tagesziel. Jede Person kann nur ihr eigenes Ziel ändern. Nur die Ziele sind gemeinsam sichtbar; persönliche Profilangaben bleiben pro Platz geschützt.
 4. Ein Match öffnen oder unter **Plan** ein Gericht suchen. Zutaten für eine Grundportion prüfen, Faktoren für beide Personen einstellen und einem Wochentag hinzufügen.

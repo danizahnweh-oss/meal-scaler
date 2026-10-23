@@ -1,3 +1,4 @@
+import { adoptTransfer } from './transfer.js';
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Heart,
@@ -136,55 +137,7 @@ export default function App() {
         e.data?.type === "tm:transfer"
       ) {
         try {
-          const pack = e.data.payload;
-          // Existing paired data is never replaced implicitly.
-          if (
-            localStorage.getItem("tm_cloud_v1") ||
-            localStorage.getItem("tm_local")
-          )
-            throw new Error(
-              "Hier sind bereits Teller-Match-Daten vorhanden. Bitte zuerst die lokale Sicherung prüfen.",
-            );
-          if (
-            !pack ||
-            pack.version !== 1 ||
-            !Array.isArray(pack.photos) ||
-            !pack.storage
-          )
-            throw new Error("Die Übernahme ist unvollständig.");
-          const db = await new Promise((resolve, reject) => {
-            const q = indexedDB.open("teller-match-photos", 1);
-            q.onupgradeneeded = () => q.result.createObjectStore("photos");
-            q.onsuccess = () => resolve(q.result);
-            q.onerror = () => reject(q.error);
-          });
-          await new Promise((resolve, reject) => {
-            const tx = db.transaction("photos", "readwrite");
-            for (const [id, blob] of pack.photos)
-              tx.objectStore("photos").put(blob, id);
-            tx.oncomplete = resolve;
-            tx.onerror = () => reject(tx.error);
-          });
-          db.close();
-          localStorage.setItem(
-            "tm_transfer_backup_v1",
-            JSON.stringify({
-              date: new Date().toISOString(),
-              storage: pack.storage,
-            }),
-          );
-          for (const [k, v] of Object.entries(pack.storage))
-            if (
-              [
-                "tm_local",
-                "tm_who",
-                "tm_cloud_v1",
-                "sb-zrblwvuhzhvljkmhtvgg-auth-token",
-              ].includes(k) &&
-              typeof v === "string"
-            )
-              localStorage.setItem(k, v);
-          // The embedded sync process is reloaded only after photos and all backups are safely stored.
+          await adoptTransfer(e.data.payload);
           popup.current.postMessage({ type: "tm:transferred" }, OLD_ORIGIN);
           setMigration("Übernommen. Die App wird neu geladen.");
           location.reload();
@@ -406,7 +359,8 @@ export default function App() {
               <button className="secondary" onClick={transfer}>
                 Teller-Match übernehmen
               </button>
-              {migration && <p role="status">{migration}</p>}
+              <details><summary>Übernahme ohne neues Fenster</summary><p>Öffne die bisherige Seite im selben Browser und speichere dort deine private Sicherung. Sie enthält deine Anmeldung und Fotos; bewahre sie wie einen persönlichen Zugangscode auf.</p><a href={OLD_PAGE} target="_blank" rel="noreferrer">Teller-Match-Sicherung erstellen</a><label className="backup-file">Sicherungsdatei übernehmen<input type="file" accept="application/json,.json" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>150*1024*1024)throw new Error('Die Sicherung ist größer als 150 MB. Bitte die direkte Übernahme verwenden.');await adoptTransfer(JSON.parse(await file.text()));location.reload();}catch(error){setMigration(error.message);}}}/></label><p>Nach der Übernahme die alte Teller-Match-Seite schließen und künftig diese App verwenden.</p></details>
+            {migration && <p role="status">{migration}</p>}
               {connected && local.length > 0 && (
                 <button className="text-button" onClick={safe(importLocal)}>
                   Lokale Planung in diesen Bereich übernehmen
