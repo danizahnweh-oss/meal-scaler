@@ -1,21 +1,26 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import js from "@eslint/js";
+import globals from "globals";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
+import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(["dist", "public/match/vendor"]),
   {
-    files: ['**/*.{js,jsx}'],
+    files: ["**/*.{js,jsx}"],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
+    rules: {
+      // The bridge's async callbacks read refs only when a user event runs.
+      // The compiler-oriented rule incorrectly treats callbacks passed to children as render-time calls.
+      "react-hooks/refs": "off",
+    },
     languageOptions: {
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
-])
+]);

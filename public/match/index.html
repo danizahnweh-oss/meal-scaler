@@ -1,0 +1,1179 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>body.embedded header,body.embedded nav,body.embedded #cloudStatus{display:none!important}body.embedded .app{padding-top:8px}body.embedded .toast{bottom:16px}body.embedded .recipe-open{margin:0 8px 12px;font-size:14px}</style></head>
+<body>
+<title>Teller-Match</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: one-screen phone app, card stack in the middle, tab bar at the bottom */
+:root{
+  --bg:#EEF0E8; --surface:#FFFFFF; --ink:#1E2620; --muted:#5A645C; --line:#D6DACF;
+  --like:#C46A0E; --like-soft:#FBE7CF; --nope:#3D5A80; --nope-soft:#DDE6F2;
+  --chip:#E4E8DD; --shadow:0 10px 30px rgba(30,38,32,.14);
+  --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141915; --surface:#1F2621; --ink:#ECEFE8; --muted:#A3AEA5; --line:#323C35;
+  --like:#F0A04B; --like-soft:#3A2A17; --nope:#8FB0D9; --nope-soft:#1D2A3A;
+  --chip:#2A332D; --shadow:0 10px 30px rgba(0,0,0,.45); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141915; --surface:#1F2621; --ink:#ECEFE8; --muted:#A3AEA5; --line:#323C35;
+  --like:#F0A04B; --like-soft:#3A2A17; --nope:#8FB0D9; --nope-soft:#1D2A3A;
+  --chip:#2A332D; --shadow:0 10px 30px rgba(0,0,0,.45); color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;overflow:hidden}
+*{box-sizing:border-box}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--like);outline-offset:2px}
+.app{height:100%;max-width:460px;margin:0 auto;display:flex;flex-direction:column;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px 8px}
+.brand{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.02em;margin:0}
+.brand span{color:var(--like)}
+.who{font-size:13px;color:var(--muted);text-align:right}
+.who b{color:var(--ink);font-weight:600}
+main{flex:1;min-height:0;position:relative}
+.view{position:absolute;inset:0;display:flex;flex-direction:column;overflow:auto;padding-bottom:12px}
+.view[hidden]{display:none!important}
+
+/* Swipe view */
+#swipe{overflow:hidden}
+.progress{font-size:13px;color:var(--muted);display:flex;justify-content:space-between;gap:8px;padding:2px 2px 10px}
+.deck{position:relative;flex:1;min-height:0}
+.card{position:absolute;inset:0;border-radius:24px;background:var(--surface);box-shadow:var(--shadow);
+  overflow:hidden;display:flex;flex-direction:column;touch-action:none;user-select:none;will-change:transform}
+.card.back{transform:scale(.94) translateY(14px);opacity:.7}
+.card .pic{flex:1;min-height:0;position:relative}
+.photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.card .shade{position:absolute;inset:auto 0 0 0;height:40%;background:linear-gradient(transparent,rgba(0,0,0,.45));pointer-events:none}
+.credit{position:absolute;right:10px;bottom:8px;left:10px;text-align:right;font-size:10.5px;color:#fff;opacity:.85;text-decoration:none;text-shadow:0 1px 2px rgba(0,0,0,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .pic svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.card .info{padding:16px 18px 18px;display:flex;flex-direction:column;gap:6px}
+.card h2{font-family:var(--display);font-weight:800;font-size:26px;line-height:1.1;margin:0;text-wrap:balance;letter-spacing:-.01em}
+.card p{margin:0;color:var(--muted);font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--chip);border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:500}
+.chip button{border:none;background:transparent;padding:0 0 0 6px;font-weight:700;color:var(--muted);min-width:24px;min-height:24px}
+.chip.x{display:inline-flex;align-items:center;padding:2px 4px 2px 10px}
+.warnline{background:var(--nope-soft);color:var(--nope);border-radius:10px;padding:8px 10px;font-size:13px}
+.chip.veg{background:#DCEFD8;color:#22501C}
+:root[data-theme="dark"] .chip.veg{background:#22351F;color:#B9E3B1}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .chip.veg{background:#22351F;color:#B9E3B1}}
+.stamp{position:absolute;top:22px;padding:6px 14px;border:4px solid;border-radius:10px;font-family:var(--display);
+  font-weight:800;font-size:30px;letter-spacing:.06em;opacity:0;background:rgba(255,255,255,.85)}
+.stamp.yes{left:20px;color:#A4560A;transform:rotate(-12deg)}
+.stamp.no{right:20px;color:#2E4A6E;transform:rotate(12deg)}
+.actions{display:flex;justify-content:center;align-items:center;gap:22px;padding-top:14px}
+.round{border:none;border-radius:50%;display:grid;place-items:center;box-shadow:var(--shadow);background:var(--surface)}
+.round.big{width:68px;height:68px}
+.round.small{width:46px;height:46px}
+.round.no{color:var(--nope)} .round.yes{color:var(--like)} .round.undo{color:var(--muted)}
+.round:active{transform:scale(.94)}
+.round:disabled{opacity:.35;cursor:default}
+.empty{margin:auto;text-align:center;max-width:300px;display:flex;flex-direction:column;gap:10px;align-items:center}
+.empty h2{font-family:var(--display);font-size:24px;margin:0}
+.empty p{margin:0;color:var(--muted)}
+
+/* Matches */
+h3{font-family:var(--display);font-size:20px;margin:18px 0 10px;letter-spacing:-.01em}
+h3 small{font-family:var(--body);font-size:13px;color:var(--muted);font-weight:500;margin-left:6px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mini{background:var(--surface);border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);display:flex;flex-direction:column}
+.mini .pic{aspect-ratio:1/1;position:relative}
+.mini .pic svg{position:absolute;inset:0;width:100%;height:100%}
+.mini .t{padding:8px 10px 10px;font-weight:600;font-size:14px;line-height:1.25}
+.mini .s{font-size:12px;color:var(--muted);font-weight:400}
+.mini.pick{outline:3px solid var(--like)}
+.btn{border:none;border-radius:14px;padding:12px 16px;font-weight:600;background:var(--ink);color:var(--bg);min-height:44px}
+.btn.ghost{background:var(--chip);color:var(--ink)}
+.btn.warn{background:var(--nope-soft);color:var(--nope)}
+.btn.like{background:var(--like);color:#fff}
+.tonight{background:var(--like-soft);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.tonight .res{font-family:var(--display);font-size:22px;font-weight:800;min-height:1.2em}
+.list{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.list li{background:var(--surface);border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.list li span:last-child{color:var(--muted);font-size:13px;text-align:right}
+.muted{color:var(--muted)}
+
+/* Settings */
+.panel{background:var(--surface);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px;margin-bottom:12px}
+.panel h4{margin:0;font-family:var(--display);font-size:17px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row > *{flex:1 1 140px;min-width:0}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+input[type=text],input[type=number],select,textarea{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 12px;min-height:44px;color:var(--ink);width:100%}
+textarea{font:inherit;font-size:12px;min-height:70px;resize:vertical}
+.check{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:14px}
+.seg{display:flex;background:var(--chip);border-radius:12px;padding:4px;gap:4px}
+.seg button{flex:1;border:none;background:transparent;border-radius:9px;padding:9px;font-weight:600;min-height:40px}
+.seg button[aria-pressed="true"]{background:var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.photopick{display:flex;gap:12px;align-items:center}
+.thumb{width:84px;height:84px;border-radius:14px;background:var(--chip);display:grid;place-items:center;color:var(--muted);overflow:hidden;flex:0 0 auto}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.filebtn{flex-direction:row;justify-content:center;align-items:center;color:var(--ink);font-size:15px;cursor:pointer}
+.filebtn input{position:absolute;width:1px;height:1px;opacity:0}
+.filebtn:focus-within{outline:3px solid var(--like);outline-offset:2px}
+.linkbtn{border:none;background:none;color:var(--muted);text-decoration:underline;padding:4px 0;text-align:left;min-height:32px}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatches button{width:36px;height:36px;border-radius:50%;border:3px solid transparent}
+.swatches button[aria-pressed="true"]{border-color:var(--ink)}
+.status{font-size:13px;color:var(--muted)}
+.confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* Tabs */
+nav{display:flex;gap:6px;padding-top:8px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+nav button{flex:1;border:none;background:transparent;border-radius:12px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12.5px;font-weight:600;color:var(--muted);min-height:52px;position:relative}
+nav button[aria-selected="true"]{color:var(--ink);background:var(--chip)}
+.badge{position:absolute;top:4px;right:calc(50% - 26px);background:var(--like);color:#fff;border-radius:999px;font-size:11px;padding:0 6px;line-height:18px;min-width:18px}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:rgba(20,25,21,.72);display:grid;place-items:center;z-index:20;padding:24px}
+.sheet{background:var(--surface);border-radius:24px;padding:24px;max-width:360px;width:100%;display:flex;flex-direction:column;gap:14px;text-align:center}
+.sheet h2{font-family:var(--display);font-weight:800;font-size:30px;margin:0;letter-spacing:-.02em}
+.sheet .pic{width:160px;height:160px;margin:0 auto;position:relative;border-radius:50%;overflow:hidden}
+.sheet .pic svg{position:absolute;inset:0;width:100%;height:100%}
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="app">
+  <header>
+    <h1 class="brand">Teller<span>-</span>Match</h1>
+    <div class="who" id="whoLine"></div>
+  </header>
+  <div class="status" id="cloudStatus" role="status" aria-live="polite" style="padding:0 2px 6px" hidden></div>
+  <main>
+    <section class="view" id="swipe" aria-label="Wischen">
+      <div class="progress"><span id="progMe"></span><span id="progOther"></span></div>
+      <div class="deck" id="deck"></div>
+      <div class="actions">
+        <button class="round small undo" id="undoBtn" aria-label="Letzte Entscheidung zurücknehmen" disabled>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+        </button>
+        <button class="round big no" id="noBtn" aria-label="Nö, lieber nicht">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+        <button class="round big yes" id="yesBtn" aria-label="Lecker, will ich">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.7 4.5c2.1 0 3.6 1.2 4.4 2.6h1.8c.8-1.4 2.3-2.6 4.4-2.6 3.7 0 5.8 3.8 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg>
+        </button>
+        <span style="width:46px" aria-hidden="true"></span>
+      </div>
+    </section>
+
+    <section class="view" id="matches" aria-label="Matches" hidden></section>
+
+    <section class="view" id="more" aria-label="Mehr" hidden>
+      <div class="panel" id="syncPanel"></div>
+      <div class="panel">
+        <h4>Wer seid ihr?</h4>
+        <div class="row">
+          <label for="nameA">Person 1<input type="text" id="nameA" maxlength="24"></label>
+          <label for="nameB">Person 2<input type="text" id="nameB" maxlength="24"></label>
+        </div>
+        <button class="btn ghost" id="saveNames">Namen speichern</button>
+        <div>
+          <div class="status" style="margin-bottom:6px">Auf diesem Gerät wischt:</div>
+          <div class="seg" id="meSeg"><button id="meA" aria-pressed="false"></button><button id="meB" aria-pressed="false"></button></div>
+        </div>
+      </div>
+
+      <form class="panel" id="addForm">
+        <h4>Eigenes Gericht hinzufügen</h4>
+        <label for="fName">Name<input type="text" id="fName" maxlength="40" placeholder="z. B. Omas Rouladen" required></label>
+        <div class="row">
+          <label for="fCuisine">Küche<input type="text" id="fCuisine" maxlength="24" placeholder="z. B. Deutsch"></label>
+          <label for="fTime">Minuten<input type="number" id="fTime" min="5" max="600" value="30"></label>
+        </div>
+        <label for="fDesc">Hauptzutaten und kurze Beschreibung<input type="text" id="fDesc" maxlength="100" placeholder="z. B. Rind, Rotkohl, Knödel"></label>
+        <div class="row">
+          <label for="fShape">Serviert als<select id="fShape"><option value="plate">Teller</option><option value="bowl">Schüssel</option><option value="pan">Pfanne / Blech</option></select></label>
+          <label class="check" for="fVeg"><input type="checkbox" id="fVeg"> vegetarisch</label>
+        </div>
+        <div id="photoBox">
+          <div class="status" style="margin-bottom:6px">Foto (optional)</div>
+          <div class="photopick">
+            <div class="thumb" id="fPrev" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.5"/><path d="M8 5l1.5-2h5L16 5"/></svg></div>
+            <div style="display:flex;flex-direction:column;gap:6px;min-width:0;flex:1">
+              <label class="btn ghost filebtn" for="fPhoto">Foto auswählen<input type="file" id="fPhoto" accept="image/*" aria-describedby="photoNote photoError"></label>
+              <button type="button" class="linkbtn" id="fPhotoClear" hidden>Foto entfernen</button>
+            </div>
+          </div>
+          <p class="status" id="photoNote" style="margin:6px 0 0"></p>
+          <p id="photoError" role="alert" style="margin:6px 0 0" hidden></p>
+        </div>
+        <div id="swatchBox"><div class="status" style="margin-bottom:6px">Farbe des Essens (wenn kein Foto)</div><div class="swatches" id="swatches"></div></div>
+        <button class="btn" type="submit" id="addBtn">Hinzufügen</button>
+      </form>
+
+      <div class="panel">
+        <h4>Unverträglichkeiten</h4>
+        <p class="status" style="margin:0">Gerichte mit diesen Zutaten tauchen nicht im Stapel auf. Gilt für euch beide.</p>
+        <div class="chips" id="exclChips"></div>
+        <form class="row" id="exclForm">
+          <label for="exclIn">Zutat hinzufügen<input type="text" id="exclIn" maxlength="30" placeholder="z. B. Sellerie"></label>
+          <button class="btn ghost" type="submit" style="flex:0 0 auto;align-self:flex-end">Hinzufügen</button>
+        </form>
+      </div>
+
+
+      <div class="panel">
+        <h4>Neu anfangen</h4>
+        <p class="status" style="margin:0">Löscht nur deine eigenen Wisch-Entscheidungen. Die der anderen Person bleiben.</p>
+        <div class="confirm" id="resetBox"><button class="btn warn" id="resetBtn">Meine Entscheidungen löschen</button></div>
+      </div>
+    </section>
+  </main>
+  <nav role="tablist" aria-label="Bereiche">
+    <button role="tab" aria-selected="true" data-tab="swipe" id="tabSwipe">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M9 3.5 7 2M15 3.5 17 2" stroke-linecap="round"/></svg>Wischen</button>
+    <button role="tab" aria-selected="false" data-tab="matches" id="tabMatches">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.3-8.9-8.6C1.7 8.2 3.6 5 6.9 5c2 0 3.4 1.1 4.1 2.4h2c.7-1.3 2.1-2.4 4.1-2.4 3.3 0 5.2 3.2 3.8 6.4C19 15.7 12 20 12 20z"/></svg>Matches<span class="badge" id="matchBadge" hidden></span></button>
+    <button role="tab" aria-selected="false" data-tab="more" id="tabMore">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Mehr</button>
+  </nav>
+</div>
+
+<div class="overlay" id="whoOverlay" hidden>
+  <div class="sheet">
+    <h2>Wer wischt hier?</h2>
+    <p class="muted" style="margin:0">Wähl dich aus. Unter „Mehr“ kannst du eure Handys mit einem privaten Einladungslink verbinden.</p>
+    <button class="btn" id="pickA"></button>
+    <button class="btn ghost" id="pickB"></button>
+    <p class="status" style="margin:0">Namen kannst du später unter „Mehr“ ändern.</p>
+  </div>
+</div>
+
+<div class="overlay" id="matchOverlay" hidden>
+  <div class="sheet">
+    <div class="pic" id="matchPic"></div>
+    <h2>Match!</h2>
+    <p style="margin:0" id="matchText"></p>
+    <button class="btn like" id="matchClose">Weiterwischen</button>
+    <button class="btn ghost" id="matchSee">Alle Matches ansehen</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script type="module">
+import { CloudSync } from './sync.js';
+import { syncConfig } from './sync-config.js';
+import { invitationToken } from './sync-core.js';
+import { createCloudUI } from './cloud-ui.js';
+(function(){
+"use strict";
+const embedded=window.parent!==window;
+if(embedded)document.body.classList.add('embedded');
+let extraBlocked = {};
+function publish(){
+ if(!embedded||!ready)return;
+ const dishes=BASE.concat(custom).map(d=>({...d,image:d._photoUrl||(d.photo?.startsWith('local:')?localPhotoUrls.get(d.photo):null)||(PHOTOS[d.id]?'fotos/'+d.id+'.jpg':null)}));
+ parent.postMessage({type:'tm:state',state:{me,names,excl,swipes,custom,dishes,connected:!!cloud?.connected,view:cloud?.view,status:cloud?.status,error:cloud?.error}},location.origin);
+}
+window.addEventListener('message',async e=>{
+ if(!embedded||e.origin!==location.origin||e.source!==parent)return;
+ const m=e.data;
+ try{
+ if(m.type==='tm:tab'&&['swipe','matches','more'].includes(m.tab))setTab(m.tab);
+ else if(m.type==='tm:blocked'){if(JSON.stringify(extraBlocked)!==JSON.stringify(m.blocked)){extraBlocked=m.blocked;topCardId=null;renderAll();}}
+ else if(m.type==='tm:refresh')publish();
+ else if(m.type==='tm:enqueue'&&['plan:goal','plan:profile','plan:meal','plan:recipe'].includes(m.kind)){
+   if(!cloud?.connected)throw new Error('Bitte zuerst die Handys unter Mehr verbinden.');
+   await cloud.enqueue(m.kind,m.payload);parent.postMessage({type:'tm:reply',id:m.id},location.origin);
+ }
+ }catch(error){parent.postMessage({type:'tm:reply',id:m.id,error:error.message},location.origin);}
+});
+
+/* ---------- Startliste ---------- */
+const BASE = [
+  ["lasagne","Lasagne","Italienisch",75,false,"plate","#C2502F",["#F3D58C","#8C2B18","#F7EEDC"],"Rinderragù, Béchamel und Mozzarella, oben knusprig überbacken.",["rind","tomate","mozzarella","nudeln"]],
+  ["pomodoro","Spaghetti Pomodoro","Italienisch",25,true,"plate","#D6452E",["#FBF4E2","#3E8E41","#F3D58C"],"Spaghetti mit fruchtiger Tomatensauce und frischem Basilikum.",["tomate","basilikum","weizennudeln"]],
+  ["margherita","Pizza Margherita","Italienisch",40,true,"pan","#D6452E",["#FBF4E2","#3E8E41","#FBF4E2"],"Tomate, Mozzarella, Basilikum. Mehr braucht es nicht.",["tomate","mozzarella","weizen"]],
+  ["pilzrisotto","Pilzrisotto mit Mascarpone","Italienisch",40,true,"plate","#E6D3A8",["#7B5B3A","#5C4128","#4F7D3A"],"Cremig gerührter Reis mit gebratenen Champignons, verfeinert mit Mascarpone.",["reis","champignons","mascarpone"]],
+  ["kaesespaetzle","Käsespätzle mit Emmentaler","Schwäbisch",40,true,"pan","#F0CD5E",["#9B5B1E","#C98A2B","#FFF0B0"],"Hausgemachte Spätzle mit Emmentaler und Röstzwiebeln.",["spätzle","emmentaler","röstzwiebeln"]],
+  ["schnitzel","Wiener Schnitzel mit Bratkartoffeln","Österreichisch",45,false,"plate","#D79B45",["#F2E7A0","#B57A2E","#4E8C3A"],"Kalbsschnitzel, dünn geklopft und goldbraun ausgebacken.",["kalb","kartoffeln","semmelbrösel"]],
+  ["redcurry","Rotes Hähnchen-Curry","Thailändisch",35,false,"bowl","#D9622B",["#F6E9D3","#3E8E41","#B8371F"],"Kokosmilch, Currypaste, Hähnchen, Bambus und Thai-Basilikum.",["hähnchen","kokosmilch","reis"]],
+  ["dal","Linsen-Dal","Indisch",35,true,"bowl","#E2A23A",["#3E8E41","#F8F0DC","#9C3B1B"],"Rote Linsen mit Kurkuma, Kreuzkümmel und frischem Koriander.",["linsen","kokosmilch","reis"]],
+  ["huehnersuppe","Hühner-Nudelsuppe","Hausmannskost",60,false,"bowl","#E9C66A",["#F7E7A8","#E07B39","#4F7D3A"],"Kräftige Brühe mit Hähnchen, Möhren, Sellerie und Nudeln.",["hähnchen","möhren","nudeln"]],
+  ["cannelloni","Spinat-Ricotta-Cannelloni","Italienisch",60,true,"pan","#D6452E",["#F6EFDC","#3E7A35","#FBF4E2"],"Gefüllt mit Spinat und Ricotta, überbacken in Tomatensauce.",["spinat","ricotta","tomate","nudeln"]],
+  ["tacos","Hähnchen-Tacos","Mexikanisch",35,false,"plate","#E8C27A",["#C2502F","#F4D03F","#4F9D3A","#F6EDDC"],"Gewürztes Hähnchen, Mais, Salat und Sauerrahm im Weizenfladen.",["hähnchen","mais","sauerrahm"]],
+  ["chili","Chili sin Carne","Tex-Mex",45,true,"bowl","#9E3420",["#F2C94C","#5B2A1E","#F8F1E3","#4F8C3A"],"Bohnen, Mais und geschmorte Paprika, rauchig und scharf.",["bohnen","mais","tomate"]],
+  ["burger","Smash Burger","Amerikanisch",30,false,"plate","#D99A3E",["#6B3A1F","#F3C640","#4C9A3A","#C93A2A"],"Zwei dünne, krosse Rinder-Patties, Cheddar, Tomate und Salat.",["rind","cheddar","weizenbrötchen"]],
+  ["falafel","Ofen-Falafel mit Minz-Joghurt","Orientalisch",40,true,"plate","#E9DDBF",["#7A5A23","#6AA84F","#C94C3A","#F5F0E1"],"Kichererbsen-Bällchen aus dem Ofen, Fladenbrot, Gurke und Minz-Joghurt.",["kichererbsen","joghurt","gurke"]],
+  ["shakshuka","Shakshuka","Nahöstlich",30,true,"pan","#C7432A",["#FFF6E3","#F5B700","#4F8C3A"],"Eier pochiert in würziger, geschmorter Tomaten-Paprika-Sauce.",["eier","tomate"]],
+  ["gulasch","Rindergulasch mit Knödeln","Bayerisch",120,false,"plate","#7E2F1C",["#F2E6C9","#B5562A","#4F7D3A"],"Lange in Brühe geschmort, mit Paprikapulver, dazu Semmelknödel.",["rind","semmelknödel"]],
+  ["flammkuchen","Flammkuchen mit Lauch und Zwiebeln","Elsässisch",30,true,"pan","#F3E6C4",["#6E8B3D","#E9D8A6","#C98A2B"],"Hauchdünner Teig mit Schmand, Lauch, gebratenen Zwiebeln und mildem Käse.",["weizen","schmand","lauch","zwiebeln","käse"]],
+  ["tikkamasala","Chicken Tikka Masala","Indisch",45,false,"bowl","#D9622B",["#F6E9D3","#3E8E41","#FBEFD9"],"Hähnchen in Joghurt mariniert, in cremiger Tomaten-Masala-Sauce.",["hähnchen","joghurt","tomate","reis"]],
+  ["buddhabowl","Quinoa-Spinat-Bowl mit Ei","Bowl",30,true,"bowl","#EADFC6",["#E07B39","#7FB24D","#8A3B6F","#F4C542"],"Quinoa mit gedünstetem Spinat, gekochtem Ei, Erdnüssen und frischem Koriander.",["quinoa","spinat","eier","erdnüsse","koriander"]],
+  ["kuerbissuppe","Kürbissuppe","Herbstküche",40,true,"bowl","#E8862A",["#F8EEDB","#3A5F2B","#6B3D16"],"Hokkaido mit Ingwer, Kokosmilch und gerösteten Kürbiskernen.",["kürbis","kokosmilch"]],
+  ["ofengemuese","Ofengemüse mit Feta","Mediterran",45,true,"pan","#D9893B",["#F6F2E8","#C8402B","#E07B39","#7A3E6E"],"Süßkartoffel, Möhren, Paprika und rote Bete aus dem Ofen, Feta drüber.",["süßkartoffel","möhren","feta"]],
+  ["haehnchenbrust","Hähnchenbrust mit Ofenkartoffeln","Hausmannskost",35,false,"plate","#E8B87A",["#E8C882","#5E9B3A","#FBF4E2"],"Saftige Hähnchenbrust, Rosmarinkartoffeln und Kräuterquark.",["hähnchen","kartoffeln","quark"]],
+  ["gnocchi","Gnocchi in Salbeibutter","Italienisch",20,true,"plate","#F2DDA0",["#C99A3A","#5E8A3A","#FFF6D6"],"Kartoffelgnocchi, braune Butter und knuspriger Salbei.",["gnocchi","butter","salbei"]],
+  ["gratin","Kartoffelgratin","Französisch",60,true,"pan","#EBC77A",["#C98A2B","#FFF3C4","#5E8A3A"],"Dünne Kartoffelscheiben in Sahne, mit Gouda goldbraun überbacken.",["kartoffeln","sahne","gouda"]],
+  ["hackbraten","Hackbraten mit Kartoffelpüree","Hausmannskost",80,false,"plate","#8C4A2A",["#F6EFDC","#B5562A","#4F7D3A"],"Saftiger Rinderhackbraten mit Bratensoße und cremigem Püree.",["rind","kartoffeln"]],
+  ["paella","Hähnchen-Paella","Spanisch",60,false,"pan","#E8B13A",["#E46A4B","#4F8C3A","#F5E9D1","#B8371F"],"Safranreis mit Hähnchen, Erbsen und grünen Bohnen aus der Pfanne.",["reis","hähnchen","erbsen"]],
+  ["kaiserschmarrn","Kaiserschmarrn","Österreichisch",30,true,"pan","#E9B964",["#FFFFFF","#7A2E3A","#C98A2B"],"Zerrupfter Pfannkuchen mit Puderzucker und Zwetschgenröster.",["eier","mehl","zwetschgen"]],
+  ["spinatknoedel","Spinatknödel in brauner Butter","Südtirolerisch",50,true,"plate","#4F7D3A",["#F2DDA0","#3E6A2E","#FFF6D6"],"Knödel aus Spinat und Weißbrot, mit brauner Butter beträufelt.",["spinat","weißbrot","butter"]],
+  ["fajitas","Hähnchen-Fajitas","Tex-Mex",30,false,"pan","#B85A2B",["#E3C04A","#4F9D3A","#C93A2A","#F6EDDC"],"Brutzelnde Paprika und Hähnchenstreifen zum Selbstwickeln.",["hähnchen","weizenfladen","sauerrahm"]],
+  ["kartoffelsuppe","Cremige Kartoffelsuppe","Bayerisch",35,true,"bowl","#E9D9A6",["#C2502F","#5E8A3A","#F6EFDC"],"Sämige Kartoffelsuppe mit Möhren, Majoran und frischer Petersilie.",["kartoffeln","möhren","gemüsebrühe","majoran","petersilie"]],
+  ["maultaschen","Gemüse-Maultaschen in Brühe","Schwäbisch",40,true,"bowl","#E8C882",["#F1E3C2","#3A5F2B","#C99A3A"],"Gefüllt mit Spinat und Gemüse, in klarer Brühe mit Schnittlauch.",["weizen","spinat","eier"]],
+  ["kartoffelpuffer","Kartoffelpuffer mit Kräuterschmand","Hausmannskost",30,true,"plate","#C99A3A",["#F7F3E8","#5E8A3A","#E9C66A"],"Knusprige Reibekuchen mit Schmand und frischen Kräutern.",["kartoffeln","schmand","eier"]],
+  ["bolognese", "Spaghetti Bolognese", "Italienisch", 45, false, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Spaghetti mit langsam geschmorter Tomaten-Rinderhack-Sauce.", ["weizennudeln", "rind", "tomate", "möhren", "zwiebeln"]],
+  ["pesto", "Pasta mit Basilikumpesto", "Italienisch", 20, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Nudeln mit Basilikum, Pinienkernen, Olivenöl und Pecorino.", ["weizennudeln", "basilikum", "pinienkerne", "pecorino"]],
+  ["arrabbiata", "Penne all’arrabbiata", "Italienisch", 25, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Penne in pikanter Tomatensauce mit Chili und Knoblauch.", ["weizennudeln", "tomate", "chili", "knoblauch"]],
+  ["auberginenauflauf", "Parmigiana di melanzane", "Italienisch", 60, true, "pan", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Auberginen mit Tomatensauce, Mozzarella und Pecorino überbacken.", ["aubergine", "tomate", "mozzarella", "pecorino"]],
+  ["ravioli", "Spinat-Ricotta-Ravioli", "Italienisch", 30, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Gefüllte Nudeltaschen mit Spinat, Ricotta und Salbeibutter.", ["weizen", "eier", "spinat", "ricotta", "butter", "salbei"]],
+  ["focaccia", "Focaccia mit Rosmarin", "Italienisch", 100, true, "pan", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Luftiges Ofenbrot mit Olivenöl, Rosmarin und grobem Salz.", ["weizen", "hefe", "olivenöl", "rosmarin"]],
+  ["moussaka", "Moussaka", "Griechisch", 90, false, "pan", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Auberginen-Kartoffel-Auflauf mit Rinderhack und Béchamel.", ["aubergine", "kartoffeln", "rind", "tomate", "milch", "weizen"]],
+  ["spanakopita", "Spanakopita", "Griechisch", 55, true, "pan", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Knuspriger Filoteig mit Spinat, Feta und frischem Dill.", ["weizen", "spinat", "feta", "eier", "dill"]],
+  ["gemista", "Gefüllte Paprika mit Reis", "Griechisch", 65, true, "pan", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Ofenpaprika mit würzigem Tomatenreis und Kräutern gefüllt.", ["paprika", "reis", "tomate", "zwiebeln", "petersilie"]],
+  ["ratatouille", "Ratatouille", "Französisch", 45, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Geschmortes Gemüse mit Auberginen, Tomaten und Kräutern der Provence.", ["aubergine", "zucchini", "paprika", "tomate", "zwiebeln"]],
+  ["zwiebelsuppe", "Französische Zwiebelsuppe", "Französisch", 60, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Karamellisierte Zwiebeln in Gemüsebrühe mit überbackenem Käsetoast.", ["zwiebeln", "gemüsebrühe", "weizenbrot", "emmentaler", "butter"]],
+  ["quiche", "Spinat-Quiche", "Französisch", 60, true, "pan", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Herzhafter Mürbeteig mit Spinat und einem cremigen Eier-Sahne-Guss.", ["weizen", "butter", "spinat", "eier", "sahne"]],
+  ["roesti", "Kartoffelrösti", "Schweizerisch", 30, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Goldbraun gebratene Kartoffelraspel, dazu ein Klecks Kräuterquark.", ["kartoffeln", "butter", "quark", "schnittlauch"]],
+  ["semmelknoedel", "Semmelknödel mit Pilzrahm", "Bayerisch", 45, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Lockere Brotknödel mit Champignons in cremiger Rahmsauce.", ["weizenbrot", "milch", "eier", "champignons", "sahne", "petersilie"]],
+  ["rahmgeschnetzeltes", "Bœuf Stroganoff", "Klassische Küche", 30, false, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Rinderstreifen mit Champignons in cremiger Rahmsauce, dazu Reis.", ["rind", "champignons", "sahne", "reis", "zwiebeln", "senf"]],
+  ["rinderrouladen", "Rinderrouladen mit Rotkohl und Klößen", "Deutsch", 150, false, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Geschmorte Rouladen mit Senf-Gurken-Füllung, Rotkohl und Kartoffelklößen.", ["rind", "senf", "gewürzgurken", "zwiebeln", "rotkohl", "kartoffeln"]],
+  ["linsensuppe", "Linsensuppe", "Hausmannskost", 45, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Sämige Linsensuppe mit Kartoffeln, Möhren, Lauch und Majoran.", ["linsen", "kartoffeln", "möhren", "lauch", "sellerie"]],
+  ["tomatensuppe", "Cremige Tomatensuppe", "Mediterran", 30, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Fruchtige Tomaten mit Basilikum und einem Schuss Sahne.", ["tomate", "zwiebeln", "knoblauch", "sahne", "basilikum"]],
+  ["brokkolisuppe", "Brokkoli-Cremesuppe", "Hausmannskost", 25, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Brokkoli und Kartoffeln, fein püriert und mit Sahne abgerundet.", ["brokkoli", "kartoffeln", "zwiebeln", "sahne"]],
+  ["minestrone", "Minestrone", "Italienisch", 40, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Italienische Gemüsesuppe mit weißen Bohnen und kleinen Nudeln.", ["tomate", "möhren", "sellerie", "zucchini", "bohnen", "weizennudeln"]],
+  ["chana", "Chana Masala", "Indisch", 35, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Kichererbsen in würziger Tomatensauce mit Ingwer und Basmatireis.", ["kichererbsen", "tomate", "zwiebeln", "ingwer", "reis"]],
+  ["palakpaneer", "Palak Paneer", "Indisch", 35, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Indischer Frischkäse in cremigem Spinat mit Ingwer und Kreuzkümmel.", ["paneer", "milch", "spinat", "zwiebeln", "ingwer"]],
+  ["aloogobi", "Aloo Gobi", "Indisch", 40, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Blumenkohl und Kartoffeln mit Kurkuma, Ingwer und Koriander.", ["blumenkohl", "kartoffeln", "tomate", "ingwer", "koriander"]],
+  ["butterchicken", "Butter Chicken", "Indisch", 50, false, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Mariniertes Hähnchen in milder Tomaten-Butter-Sauce, dazu Reis.", ["hähnchen", "joghurt", "tomate", "butter", "sahne", "reis"]],
+  ["biryani", "Gemüse-Biryani", "Indisch", 50, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Duftender Gewürzreis mit Möhren, Erbsen, Blumenkohl und Joghurt.", ["reis", "möhren", "erbsen", "blumenkohl", "joghurt"]],
+  ["naan", "Naan mit Knoblauchbutter", "Indisch", 75, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Weiches Pfannenbrot mit Joghurt im Teig und Knoblauchbutter.", ["weizen", "joghurt", "hefe", "butter", "knoblauch"]],
+  ["burrito", "Bohnen-Reis-Burrito", "Mexikanisch", 30, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Weizentortilla mit Bohnen, Reis, Mais und geschmolzenem Cheddar.", ["weizen", "bohnen", "reis", "mais", "cheddar", "tomate"]],
+  ["quesadilla", "Käse-Quesadillas", "Mexikanisch", 20, true, "pan", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Knusprige Tortillas mit Käse, gebratener Paprika und Mais.", ["weizen", "cheddar", "paprika", "mais"]],
+  ["enchiladas", "Hähnchen-Enchiladas", "Mexikanisch", 45, false, "pan", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Gefüllte Tortillas mit Hähnchen, Tomatensauce und Käse überbacken.", ["weizen", "hähnchen", "tomate", "cheddar", "zwiebeln"]],
+  ["maccheese", "Mac and Cheese", "Amerikanisch", 35, true, "pan", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Makkaroni in cremiger Cheddarsauce mit knuspriger Ofenkruste.", ["weizennudeln", "cheddar", "milch", "butter"]],
+  ["ofenkartoffel", "Ofenkartoffel mit Kräuterquark", "Hausmannskost", 60, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Große Ofenkartoffel mit cremigem Quark und frischem Schnittlauch.", ["kartoffeln", "quark", "schnittlauch"]],
+  ["couscous", "Couscous mit Ofengemüse", "Orientalisch", 35, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Lockerer Couscous mit gerösteten Möhren, Paprika und Kichererbsen.", ["weizencouscous", "möhren", "paprika", "kichererbsen"]],
+  ["hummus", "Hummus mit Fladenbrot", "Orientalisch", 20, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Cremiges Kichererbsenmus mit Tahin, geröstetem Knoblauch und warmem Fladenbrot.", ["kichererbsen", "sesam", "gerösteter Knoblauch", "olivenöl", "weizen"]],
+  ["menemen", "Menemen", "Türkisch", 20, true, "pan", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Sanft gestockte Eier mit Tomaten und grüner Paprika aus der Pfanne.", ["eier", "tomate", "paprika", "zwiebeln"]],
+  ["mercimek", "Türkische Linsensuppe", "Türkisch", 35, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Rote Linsen, Möhren und Kartoffeln, fein püriert und mit Minze gewürzt.", ["rote linsen", "möhren", "kartoffeln", "zwiebeln", "minze"]],
+  ["cilbir", "Çılbır – Eier auf Joghurt", "Türkisch", 20, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Pochierte Eier auf Joghurt mit geröstetem Knoblauch, Paprikabutter und Fladenbrot.", ["eier", "joghurt", "gerösteter Knoblauch", "butter", "paprikapulver", "weizen"]],
+  ["pfannkuchen", "Pfannkuchen mit Quark", "Hausmannskost", 25, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Dünne Pfannkuchen mit einer cremigen, süßen Quarkfüllung.", ["weizen", "milch", "eier", "quark"]],
+  ["milchreis", "Milchreis mit Zimt", "Süße Küche", 35, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Cremiger Rundkornreis mit Milch, Vanille und Zimtzucker.", ["reis", "milch", "vanille", "zimt"]],
+  ["griesbrei", "Grießbrei mit Fruchtkompott", "Süße Küche", 15, true, "bowl", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Warmer Weichweizengrieß mit Milch und fruchtigem Kompott.", ["weizengrieß", "milch", "beeren", "vanille"]],
+  ["waffeln", "Waffeln mit heißen Kirschen", "Süße Küche", 30, true, "plate", "#D9893B", ["#F7F1E3", "#4F8C3A", "#8C2B18"], "Frisch gebackene Waffeln mit warmen Kirschen und Vanillequark.", ["weizen", "milch", "eier", "butter", "kirschen", "quark"]]
+].map(r=>({id:r[0],name:r[1],cuisine:r[2],time:r[3],veg:r[4],shape:r[5],base:r[6],tops:r[7],desc:r[8],ing:r[9]||[]}));
+const DEFAULT_EXCL = ["Walnuss","Roggen","Fisch","Schwein","Ananas","Zitrone","Soja","rohe Paprika","Zucchini","rohe Zwiebeln","roher Knoblauch","Bergkäse","Parmesan","Piment","Äpfel","Avocado","Balsamico","Rotwein"];
+
+const PHOTOS = {
+  "buddhabowl": [
+    "Bex Walton from London, England",
+    "CC BY 2.0",
+    "Quinoa grain bowl brunch at Caravan Bankside, London, UK (36736487911).jpg"
+  ],
+  "burger": [
+    "Wiki.cullin",
+    "CC BY-SA 4.0",
+    "Double Smash Burger with Fries.jpg"
+  ],
+  "cannelloni": [
+    "Francis Bijl from Groningen, Netherlands",
+    "CC BY 2.0",
+    "Cannelloni ready to eat (504724484).jpg"
+  ],
+  "chili": [
+    "Benreis",
+    "CC BY-SA 4.0",
+    "Chilli sine carne Zur Tanne Harsdorf.jpg"
+  ],
+  "dal": [
+    "AugustineKajur",
+    "CC BY-SA 4.0",
+    "Dal Tadka-Delhi.jpg"
+  ],
+  "fajitas": [
+    "Missvain",
+    "CC BY 4.0",
+    "Chicken fajitas - La Hacienda - Sarah Stierch.jpg"
+  ],
+  "falafel": [
+    "やましこ",
+    "CC BY-SA 2.0",
+    "Falafel (49728839526).jpg"
+  ],
+  "flammkuchen": [
+    "Brücke-Osteuropa",
+    "CC0",
+    "Flammkuchen mit Lauch und Zwiebeln.jpg"
+  ],
+  "gnocchi": [
+    "Karen and Brad Emerson",
+    "CC BY 2.0",
+    "Sage brown butter gnocchi with Italian green beans (3557511131).jpg"
+  ],
+  "gratin": [
+    "Benoit5656",
+    "Public domain",
+    "Gratin-Dauphinois.jpg"
+  ],
+  "gulasch": [
+    "RitaE",
+    "CC0",
+    "Goulash hungarian.jpg"
+  ],
+  "hackbraten": [
+    "Benreis",
+    "CC BY-SA 4.0",
+    "Hackbraten Aachener Brauhaus.jpg"
+  ],
+  "haehnchenbrust": [
+    "Gerda Arendt",
+    "CC BY-SA 4.0",
+    "Chicken breast, Mittelheim.jpg"
+  ],
+  "huehnersuppe": [
+    "Eli Hodapp from Naperville, United States",
+    "CC BY 2.0",
+    "Chicken noodle soup (cropped).jpg"
+  ],
+  "kaesespaetzle": [
+    "Takeaway",
+    "CC BY-SA 4.0",
+    "2015 0718 Käsespätzle Sölden.jpg"
+  ],
+  "kaiserschmarrn": [
+    "Geolina163",
+    "CC BY-SA 4.0",
+    "Hofzuckerbäcker Demel Kaiserschmarrn 2.jpg"
+  ],
+  "kartoffelpuffer": [
+    "Raimond Spekking",
+    "CC BY-SA 4.0",
+    "Frische, selbstgemachte Reibekuchen-8786.jpg"
+  ],
+  "kartoffelsuppe": [
+    "Benreis",
+    "CC BY-SA 4.0",
+    "Kartoffelsuppe Wirtshaus Pfaueninsel.jpg"
+  ],
+  "kuerbissuppe": [
+    "Cala cala_maffia",
+    "CC0",
+    "Autumn Soup (Unsplash) cropped.jpg"
+  ],
+  "lasagne": [
+    "jeffreyw",
+    "CC BY 2.0",
+    "Lasagna (1).jpg"
+  ],
+  "margherita": [
+    "Mario56",
+    "CC BY-SA 3.0",
+    "Margherita Originale.JPG"
+  ],
+  "maultaschen": [
+    "Benreis",
+    "CC BY-SA 4.0",
+    "Maultaschen Kuckuck Fellbach.jpg"
+  ],
+  "ofengemuese": [
+    "Kgbo",
+    "CC BY-SA 4.0",
+    "Roasted potatoes, carrots and sweet potatoes, home cooking in Brisbane, 2020.jpg"
+  ],
+  "paella": [
+    "Kunokuno",
+    "CC BY-SA 4.0",
+    "Chicken Paella in Hot Pan.jpg"
+  ],
+  "pilzrisotto": [
+    "spurekar",
+    "CC BY 2.0",
+    "Mushroom and Leek Risotto (49535206656).jpg"
+  ],
+  "pomodoro": [
+    "Andy Li",
+    "CC0",
+    "Spaghetti al pomodoro - Pomodoro, Worthing 2026-06-26.jpg"
+  ],
+  "redcurry": [
+    "Guilhem Vellut from Paris, France",
+    "CC BY 2.0",
+    "Red chicken curry, Aiyara Thai restaurant, Paris 001.jpg"
+  ],
+  "schnitzel": [
+    "Dr. Bernd Gross",
+    "CC BY-SA 3.0 de",
+    "Wiener Schnitzel in Wachwitz (1).JPG"
+  ],
+  "shakshuka": [
+    "Calliopejen1",
+    "CC BY-SA 3.0",
+    "Shakshuka by Calliopejen1.jpg"
+  ],
+  "spinatknoedel": [
+    "Kritzolina",
+    "CC BY-SA 4.0",
+    "Spinatknödel mit Parmesan 02.jpg"
+  ],
+  "tacos": [
+    "Arnold Gatilao from Oakland, CA, USA",
+    "CC BY 2.0",
+    "Chicken Achiote tacos (17370792411).jpg"
+  ],
+  "tikkamasala": [
+    "Michael Hays",
+    "CC BY 2.0",
+    "Chicken tikka masala.jpg"
+  ],
+  "bolognese": [
+    "Andy Li",
+    "CC0",
+    "Spaghetti bolognese - Enzo's 2026-04-21.jpg"
+  ],
+  "pesto": [
+    "Marco Del Torchio 95",
+    "CC BY-SA 4.0",
+    "Pasta al pesto fatto in casa.jpg"
+  ],
+  "arrabbiata": [
+    "Petar Milošević",
+    "CC BY-SA 4.0",
+    "Penne Arrabbiata.jpg"
+  ],
+  "auberginenauflauf": [
+    "Flickr.com user \"Blue Lotus\"",
+    "CC BY 2.0",
+    "Melanzane alla Parmigiana.jpg"
+  ],
+  "ravioli": [
+    "Photograph by Mike Peel (www.mikepeel.net).",
+    "CC BY-SA 4.0",
+    "At New York City 2023 150.jpg"
+  ],
+  "focaccia": [
+    "Parkerman & Christie from San Diego, USA",
+    "CC BY 2.0",
+    "Rosemary Focaccia.jpg"
+  ],
+  "moussaka": [
+    "Fotograf: Dieter Mueller (dino1948) Kamera: de:Nikon 885",
+    "CC BY-SA 3.0",
+    "Mousakas.jpg"
+  ],
+  "spanakopita": [
+    "Alpha",
+    "CC BY-SA 2.0",
+    "Spanakopita.jpg"
+  ],
+  "gemista": [
+    "Tahir Qalliu",
+    "CC BY-SA 4.0",
+    "Speca te mbushura ( Stuffes peppers).jpg"
+  ],
+  "ratatouille": [
+    "Marcus Guimarães",
+    "CC BY 2.0",
+    "Ratatouille.jpg"
+  ],
+  "zwiebelsuppe": [
+    "WestportWiki",
+    "CC BY-SA 4.0",
+    "French Onion Soup Sainte-Foy-Tarentaise, Rhône-Alpes, France - 2022-02-16.jpg"
+  ],
+  "quiche": [
+    "Andy Li",
+    "CC0",
+    "Spinach Quiche - Julien Plumart 2025-10-14.jpg"
+  ],
+  "roesti": [
+    "Poupou l'quourouce",
+    "CC BY 4.0",
+    "Rösti auf blauem Teller.jpg"
+  ],
+  "rahmgeschnetzeltes": [
+    "V 2",
+    "CC BY 2.0",
+    "Beef Stroganoff-03.jpg"
+  ],
+  "rinderrouladen": [
+    "Anagoria",
+    "CC BY 3.0",
+    "2019-04-28 Rinderroulade mit Rotkohl und Klößen in Erfurt anagoria.jpg"
+  ],
+  "linsensuppe": [
+    "Whoisjohngalt",
+    "CC BY-SA 4.0",
+    "Bowl of lentil soup with green and red lentils.jpg"
+  ],
+  "tomatensuppe": [
+    "Srujanabotcha",
+    "CC BY-SA 4.0",
+    "Tomato Basil Soup.jpg"
+  ],
+  "brokkolisuppe": [
+    "Alpha from Melbourne, Australia",
+    "CC BY-SA 2.0",
+    "Cream of broccoli soup.jpg"
+  ],
+  "minestrone": [
+    "Katrin Morenz from Aachen, Deutschland",
+    "CC BY-SA 2.0",
+    "Minestrone soup.jpg"
+  ],
+  "chana": [
+    "Parzeus",
+    "CC BY-SA 4.0",
+    "Chana Masala in Paulínia, 2023-10-16.jpg"
+  ],
+  "palakpaneer": [
+    "Koshur",
+    "CC BY-SA 4.0",
+    "Palak Paneer at WCI 2023.jpg"
+  ],
+  "aloogobi": [
+    "paul goyette",
+    "CC BY-SA 2.0",
+    "Aloo gobi.jpg"
+  ],
+  "butterchicken": [
+    "stu_spivack",
+    "CC BY-SA 2.0",
+    "Chicken makhani.jpg"
+  ],
+  "biryani": [
+    "Phadke09",
+    "CC BY-SA 4.0",
+    "Vegetable Biryani IMG 001.jpg"
+  ],
+  "naan": [
+    "Dr. Raju Kasambe",
+    "CC BY-SA 4.0",
+    "Garlic Butter Naan Food by Ms Ujwala Kasambe DSCN1136 (3).jpg"
+  ],
+  "burrito": [
+    "Benoît Prieur",
+    "CC0",
+    "Vegetarian burrito (Los Angeles) July 2022.jpg"
+  ],
+  "quesadilla": [
+    "Popo le Chien",
+    "CC BY-SA 3.0",
+    "Quesadilla 2.jpg"
+  ],
+  "enchiladas": [
+    "Missvain",
+    "CC BY 4.0",
+    "Chicken enchiladas at La Casa Restaurant - January 2023 - Sarah Stierch.jpg"
+  ],
+  "maccheese": [
+    "Martin",
+    "CC BY 2.0",
+    "Baked macaroni and cheese 1.jpg"
+  ],
+  "ofenkartoffel": [
+    "NeoBatfreak",
+    "CC BY-SA 4.0",
+    "Baked potato (Clovis, CA June 2022).png"
+  ],
+  "couscous": [
+    "HaJunkiyada",
+    "CC BY-SA 4.0",
+    "Liat Portal for Foodie Disorder - Algerian Couscous with Vegetables.jpg"
+  ],
+  "hummus": [
+    "Satdeep Gill",
+    "CC BY-SA 4.0",
+    "Homemade hummus and pita 03.jpg"
+  ],
+  "menemen": [
+    "E4024",
+    "CC BY-SA 4.0",
+    "Turkish egg dish Menemen.jpg"
+  ],
+  "mercimek": [
+    "E4024",
+    "CC BY-SA 4.0",
+    "Mercimek çorbasi.jpg"
+  ],
+  "cilbir": [
+    "Andy Li",
+    "CC0",
+    "Çılbır - Cafe Rust 2025-03-31.jpg"
+  ],
+  "pfannkuchen": [
+    "Silar",
+    "CC BY-SA 3.0",
+    "Pancake with sweet quark cheese, 2010 by Silar 01.JPG"
+  ],
+  "milchreis": [
+    "Alice Wiegand",
+    "CC BY-SA 3.0",
+    "Milchreis.jpg"
+  ],
+  "griesbrei": [
+    "Alice Wiegand",
+    "CC BY-SA 3.0",
+    "Griessbrei.jpg"
+  ],
+  "waffeln": [
+    "Theo Crazzolara",
+    "CC BY-SA 2.0",
+    "Herzwaffel mit Kirsche (27770734105).jpg"
+  ],
+  "semmelknoedel": [
+    "Gerda Arendt",
+    "CC0",
+    "Semmelknödel and forest mushrooms, Oestrich.jpg"
+  ]
+};
+const SWATCHES = ["#C2502F","#E9C66A","#D9893B","#7E2F1C","#6AA84F","#E8862A","#F2EBDD","#8A3B6F"];
+const BGS = ["#F6D9C3","#DCE8D2","#D7E3EE","#F3E2B5","#EAD7E4","#E4E0D0","#CFE6E1","#F2D0CC"];
+
+/* ---------- State ---------- */
+let cloud = null, cloudUI = null;
+const joinToken = invitationToken(location.hash);
+let names = {a:"Daniel", b:"Stina"};
+let me = lsGet("tm_who");
+const swipes = {a:{}, b:{}};
+let custom = [];
+let excl = DEFAULT_EXCL.slice();
+const undoStack = [];
+let tab = "swipe";
+let ready = false;
+
+function lsGet(k){ try{return localStorage.getItem(k);}catch(e){return null;} }
+function lsSet(k,v){ try{localStorage.setItem(k,v);}catch(e){} }
+const other = w => w==="a"?"b":"a";
+const dishText = d => [d.name,d.desc,(d.ing||[]).join(" ")].join(" ").toLowerCase();
+const hits = d => { const t=dishText(d); return [...new Set([...excl.filter(x=>x.trim() && t.includes(x.trim().toLowerCase())),...(extraBlocked[d.id]||[])])]; };
+const allDishes = () => BASE.concat(custom).filter(d=>hits(d).length===0);
+const byId = id => allDishes().find(d=>d.id===id);
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------- Illustration ---------- */
+function hash(s){let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+function rng(seed){return ()=>{seed=(seed+0x6D2B79F5)>>>0;let t=seed;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
+function blob(cx,cy,r,rand,n=10,j=.12){
+  const pts=[];for(let i=0;i<n;i++){const a=i/n*Math.PI*2;const rr=r*(1-j+rand()*j*2);pts.push([cx+Math.cos(a)*rr,cy+Math.sin(a)*rr]);}
+  let d="";for(let i=0;i<n;i++){const p=pts[i],q=pts[(i+1)%n];const mx=(p[0]+q[0])/2,my=(p[1]+q[1])/2;
+    d+=(i===0?`M${((pts[n-1][0]+p[0])/2).toFixed(1)},${((pts[n-1][1]+p[1])/2).toFixed(1)}`:"")+` Q${p[0].toFixed(1)},${p[1].toFixed(1)} ${mx.toFixed(1)},${my.toFixed(1)}`;}
+  return d+"Z";
+}
+function illo(d){
+  const rand=rng(hash(d.id));
+  const bg=BGS[hash(d.id+"bg")%BGS.length];
+  const cx=150,cy=150;
+  let s=`<svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Illustration: ${esc(d.name)}"><rect width="300" height="300" fill="${bg}"/>`;
+  // Tischdecken-Streifen
+  for(let i=0;i<6;i++){s+=`<rect x="${i*60-10}" y="0" width="22" height="300" fill="#000" opacity=".035"/>`;}
+  let foodR=82;
+  if(d.shape==="bowl"){
+    s+=`<ellipse cx="${cx+6}" cy="${cy+10}" rx="124" ry="124" fill="#000" opacity=".12"/>`;
+    s+=`<circle cx="${cx}" cy="${cy}" r="120" fill="#2F3A42"/><circle cx="${cx}" cy="${cy}" r="104" fill="#3C4952"/>`;
+    s+=`<circle cx="${cx}" cy="${cy}" r="96" fill="${d.base}"/>`;foodR=88;
+  }else if(d.shape==="pan"){
+    s+=`<rect x="${cx+100}" y="${cy-14}" width="70" height="28" rx="12" fill="#2B2B2B"/>`;
+    s+=`<ellipse cx="${cx+6}" cy="${cy+10}" rx="124" ry="124" fill="#000" opacity=".12"/>`;
+    s+=`<circle cx="${cx}" cy="${cy}" r="120" fill="#333"/><circle cx="${cx}" cy="${cy}" r="108" fill="#454545"/>`;
+    s+=`<path d="${blob(cx,cy,100,rand,14,.05)}" fill="${d.base}"/>`;foodR=92;
+  }else{
+    s+=`<ellipse cx="${cx+6}" cy="${cy+10}" rx="124" ry="124" fill="#000" opacity=".12"/>`;
+    s+=`<circle cx="${cx}" cy="${cy}" r="120" fill="#FBFAF6"/><circle cx="${cx}" cy="${cy}" r="98" fill="none" stroke="#E6E1D6" stroke-width="2"/>`;
+    s+=`<path d="${blob(cx,cy,74,rand,9,.16)}" fill="${d.base}"/>`;foodR=70;
+  }
+  const n=16+Math.floor(rand()*10);
+  for(let i=0;i<n;i++){
+    const a=rand()*Math.PI*2, r=Math.sqrt(rand())*foodR*.85;
+    const x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r;
+    const c=d.tops[i%d.tops.length]; const w=5+rand()*11, h=w*(.5+rand()*.6), rot=rand()*180;
+    s+=`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${w.toFixed(1)}" ry="${h.toFixed(1)}" fill="${c}" transform="rotate(${rot.toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
+  }
+  // Glanzlicht
+  s+=`<path d="M${cx-84},${cy-60} A104,104 0 0 1 ${cx-30},${cy-100}" stroke="#fff" stroke-width="6" stroke-linecap="round" fill="none" opacity=".35"/>`;
+  return s+"</svg>";
+}
+
+function pic(d){
+  if(d.photo?.startsWith("remote:")) return d._photoUrl ? `<img class="photo" src="${esc(d._photoUrl)}" alt="${esc(d.name)}" draggable="false" loading="lazy">` : illo(d);
+  if(d.photo && d.photo.startsWith("local:")){
+    const url=localPhotoUrls.get(d.photo);
+    return url ? `<img class="photo" src="${esc(url)}" alt="${esc(d.name)}" draggable="false" loading="lazy">` : illo(d);
+  }
+  const c=PHOTOS[d.id];
+  if(!c) return illo(d);
+  return `<img class="photo" src="fotos/${d.id}.jpg" alt="${esc(d.name)}" draggable="false" loading="lazy">`;
+}
+function credit(d){
+  const c=PHOTOS[d.id]; if(!c) return "";
+  return `<a class="credit" href="https://commons.wikimedia.org/wiki/File:${encodeURIComponent(c[2])}" target="_blank" rel="noopener">Foto: ${esc(c[0])} · ${esc(c[1])}</a>`;
+}
+/* ---------- Derived ---------- */
+function deckFor(w){ return allDishes().filter(d=>!(d.id in swipes[w])); }
+function matchList(){ return allDishes().filter(d=>swipes.a[d.id]===true && swipes.b[d.id]===true); }
+function rated(w){ return allDishes().filter(d=>d.id in swipes[w]).length; }
+
+/* ---------- Render ---------- */
+function renderHeader(){
+  $("meA").disabled=!!cloud?.connected&&me!=="a";
+  $("meB").disabled=!!cloud?.connected&&me!=="b";
+  $("cloudStatus").hidden=!cloud?.configured;
+  if($("cloudStatus").textContent!==(cloud?.status||""))$("cloudStatus").textContent=cloud?.status||"";
+  $("whoLine").innerHTML = me ? `wischt als <b>${esc(names[me])}</b>` : "";
+  $("pickA").textContent = names.a; $("pickB").textContent = names.b;
+  $("meA").textContent = names.a; $("meB").textContent = names.b;
+  $("meA").setAttribute("aria-pressed", String(me==="a")); $("meB").setAttribute("aria-pressed", String(me==="b"));
+  if(document.activeElement!==$("nameA")) $("nameA").value = names.a;
+  if(document.activeElement!==$("nameB")) $("nameB").value = names.b;
+  const m = matchList().length;
+  $("matchBadge").hidden = m===0; $("matchBadge").textContent = m;
+}
+
+let topCardId = null;
+function renderDeck(){
+  const deckEl=$("deck");
+  if(!me){deckEl.innerHTML="";return;}
+  const total=allDishes().length;
+  $("progMe").textContent = `${rated(me)} von ${total} bewertet`;
+  $("progOther").textContent = `${names[other(me)]}: ${rated(other(me))} von ${total}`;
+  const deck=deckFor(me);
+  $("undoBtn").disabled = undoStack.length===0;
+  $("noBtn").disabled = $("yesBtn").disabled = deck.length===0;
+  if(deck.length===0){
+    topCardId=null;
+    deckEl.innerHTML=`<div class="empty"><h2>Alles bewertet</h2><p>Schau bei den Matches nach, was ihr beide wollt. Unter „Mehr“ kannst du eigene Gerichte ergänzen.</p><button class="btn" id="goMatches">Zu den Matches</button></div>`;
+    $("goMatches").onclick=()=>setTab("matches");
+    return;
+  }
+  if(deck[0].id===topCardId && deckEl.querySelector(".card:not(.back)")) return; // unverändert
+  topCardId=deck[0].id;
+  const html=[];
+  if(deck[1]) html.push(cardHTML(deck[1],true));
+  html.push(cardHTML(deck[0],false));
+  deckEl.innerHTML=html.join("");
+  bindDrag(deckEl.querySelector(".card:not(.back)"));
+}
+function cardHTML(d,back){
+  return `<article class="card${back?" back":""}" data-id="${esc(d.id)}" ${back?'aria-hidden="true"':''}>
+    <div class="pic">${pic(d)}<div class="shade"></div>${credit(d)}<div class="stamp yes">LECKER</div><div class="stamp no">NÖ</div></div>
+    <div class="info"><h2>${esc(d.name)}</h2>
+      <div class="chips"><span class="chip">${esc(d.cuisine||"Eigenes")}</span><span class="chip">${d.time} Min.</span>${d.veg?'<span class="chip veg">vegetarisch</span>':''}</div>
+      ${d.desc?`<p>${esc(d.desc)}</p>`:""}</div></article>`;
+}
+
+function renderMatches(){
+  const el=$("matches");
+  if(!me){el.innerHTML="";return;}
+  const ms=matchList();
+  const o=other(me);
+  const waiting=allDishes().filter(d=>swipes[me][d.id]===true && !(d.id in swipes[o]));
+  const theirs=allDishes().filter(d=>swipes[o][d.id]===true && !(d.id in swipes[me]));
+  let h="";
+  if(ms.length){
+    h+=`<div class="tonight"><div class="status">Keine Lust zu entscheiden?</div><div class="res" id="tonightRes" aria-live="polite"></div><button class="btn like" id="tonightBtn">Was kochen wir heute?</button></div>`;
+  }
+  h+=`<h3>Eure Favoriten<small>${ms.length}</small></h3>`;
+  h+= ms.length ? `<div class="grid">${ms.map(d=>`<div class="mini" data-id="${esc(d.id)}"><div class="pic">${pic(d)}</div><div class="t">${esc(d.name)}<div class="s">${esc(d.cuisine||"")} · ${d.time} Min.</div></div>${embedded?`<button type="button" class="btn ghost recipe-open" data-recipe="${esc(d.id)}">Rezept öffnen</button>`:""}</div>`).join("")}</div>`
+     : `<p class="muted">Noch keine Matches. Ein Match entsteht, wenn ${esc(names.a)} und ${esc(names.b)} beide nach rechts wischen.</p>`;
+  if(waiting.length){
+    h+=`<h3>Wartet auf ${esc(names[o])}<small>${waiting.length}</small></h3><ul class="list">${waiting.map(d=>`<li><span>${esc(d.name)}</span><span>noch nicht bewertet</span></li>`).join("")}</ul>`;
+  }
+  if(theirs.length){
+    h+=`<h3>${esc(names[o])} mag, du hast noch nicht gewischt<small>${theirs.length}</small></h3><p class="muted" style="margin:0">Wisch weiter, vielleicht wird’s ein Match.</p>`;
+  }
+  el.innerHTML=h;
+  el.querySelectorAll('[data-recipe]').forEach(b=>b.onclick=()=>parent.postMessage({type:'tm:recipe',id:b.dataset.recipe},location.origin));
+  const b=$("tonightBtn");
+  if(b) b.onclick=()=>{
+    const pick=ms[Math.floor(Math.random()*ms.length)];
+    $("tonightRes").textContent=pick.name;
+    el.querySelectorAll(".mini").forEach(m=>m.classList.toggle("pick",m.dataset.id===pick.id));
+  };
+}
+
+function renderSync(){ cloudUI?.render(); }
+
+function renderExcl(){
+  const el=$("exclChips"); if(!el) return;
+  el.innerHTML=excl.map((x,i)=>`<span class="chip x">${esc(x)}<button type="button" data-i="${i}" aria-label="${esc(x)} entfernen">×</button></span>`).join("");
+  el.querySelectorAll("button").forEach(b=>b.onclick=()=>{ excl.splice(+b.dataset.i,1); saveExcl(); });
+}
+function saveExcl(){
+  if(cloud?.connected) cloud.enqueue('settings',{exclusions:[...excl]}).catch(e=>toast(e.message));
+  else saveLocal();
+  topCardId=null; renderAll();
+}
+$("exclForm").addEventListener("submit",e=>{
+  e.preventDefault(); const v=$("exclIn").value.trim(); if(!v) return;
+  if(!excl.some(x=>x.toLowerCase()===v.toLowerCase())) excl.push(v);
+  $("exclIn").value=""; saveExcl(); toast(`„${v}“ wird ausgeblendet`);
+});
+function renderAll(){ renderExcl(); renderHeader(); renderDeck(); if(tab==="matches") renderMatches(); if(tab==="more") renderSync(); $("whoOverlay").hidden = !!me || !ready || !!joinToken; publish(); }
+
+/* ---------- Tabs ---------- */
+function setTab(t){
+  tab=t;
+  ["swipe","matches","more"].forEach(v=>{ $(v).hidden = v!==t; });
+  document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===t)));
+  if(t==="matches") renderMatches();
+  if(t==="more") renderSync();
+}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+
+/* ---------- Swipe logic ---------- */
+let busy=false;
+function decide(like){
+  if(busy||!me) return;
+  const card=$("deck").querySelector(".card:not(.back)");
+  if(!card) return;
+  busy=true;
+  const id=card.dataset.id;
+  card.style.transition="transform .32s ease-out, opacity .32s";
+  card.style.transform=`translateX(${like?520:-520}px) rotate(${like?24:-24}deg)`;
+  card.style.opacity="0";
+  setTimeout(()=>{ busy=false; commit(id,like); },300);
+}
+function commit(id,like){
+  swipes[me][id]=like;
+  undoStack.push(id);
+  persistSwipe(id,like);
+  renderAll();
+  if(like && swipes[other(me)][id]===true) showMatch(id);
+}
+function undo(){
+  const id=undoStack.pop(); if(!id) return;
+  delete swipes[me][id];
+  if(cloud?.connected) cloud.enqueue('vote',{dish:id,liked:null}).catch(e=>toast(e.message)); else saveLocal();
+  topCardId=null; renderAll();
+}
+$("yesBtn").onclick=()=>decide(true);
+$("noBtn").onclick=()=>decide(false);
+$("undoBtn").onclick=undo;
+document.addEventListener("keydown",e=>{
+  if(tab!=="swipe"||!me||e.target.closest("input,textarea,select")) return;
+  if(e.key==="ArrowRight") decide(true);
+  if(e.key==="ArrowLeft") decide(false);
+});
+
+function bindDrag(card){
+  if(!card) return;
+  let sx=0,sy=0,dx=0,dragging=false;
+  const yes=card.querySelector(".stamp.yes"), no=card.querySelector(".stamp.no");
+  card.addEventListener("pointerdown",e=>{ if(busy) return; dragging=true; sx=e.clientX; sy=e.clientY; dx=0; card.setPointerCapture(e.pointerId); card.style.transition="none"; });
+  card.addEventListener("pointermove",e=>{
+    if(!dragging) return;
+    dx=e.clientX-sx; const dy=(e.clientY-sy)*.3;
+    card.style.transform=`translate(${dx}px,${dy}px) rotate(${dx/18}deg)`;
+    yes.style.opacity=Math.max(0,Math.min(1,dx/90)); no.style.opacity=Math.max(0,Math.min(1,-dx/90));
+  });
+  const end=()=>{
+    if(!dragging) return; dragging=false;
+    if(Math.abs(dx)>100){ decide(dx>0); }
+    else { card.style.transition="transform .25s"; card.style.transform=""; yes.style.opacity=0; no.style.opacity=0; }
+  };
+  card.addEventListener("pointerup",end); card.addEventListener("pointercancel",end);
+}
+
+/* ---------- Match overlay & toast ---------- */
+function showMatch(id){
+  const d=byId(id); if(!d) return;
+  $("matchPic").innerHTML=pic(d);
+  $("matchText").textContent=`${names.a} und ${names.b} wollen beide ${d.name}.`;
+  $("matchOverlay").hidden=false; $("matchClose").focus();
+}
+$("matchClose").onclick=()=>{$("matchOverlay").hidden=true;};
+$("matchSee").onclick=()=>{$("matchOverlay").hidden=true; setTab("matches");};
+let toastT;
+function toast(msg){ if(embedded)parent.postMessage({type:'tm:notice',message:msg},location.origin); const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600); }
+
+/* ---------- Who am I ---------- */
+function setMe(w){ if(cloud?.connected&&w!==cloud.view.me.slot){toast('Dieses Gerät ist fest mit deinem Platz verbunden.');return;} me=w; lsSet("tm_who",w); undoStack.length=0; topCardId=null; renderAll(); }
+$("pickA").onclick=()=>setMe("a"); $("pickB").onclick=()=>setMe("b");
+$("meA").onclick=()=>setMe("a"); $("meB").onclick=()=>setMe("b");
+
+$("saveNames").onclick=()=>{
+  const a=$("nameA").value.trim()||"Person 1", b=$("nameB").value.trim()||"Person 2";
+  names={a,b};
+  if(cloud?.connected) cloud.enqueue('settings',{names:{a,b}}).catch(e=>toast(e.message));
+  else saveLocal();
+  renderAll(); toast("Namen gespeichert");
+};
+
+/* ---------- Add dish ---------- */
+let swatch=SWATCHES[0];
+$("swatches").innerHTML=SWATCHES.map((c,i)=>`<button type="button" style="background:${c}" aria-label="Farbe ${i+1}" aria-pressed="${i===0}" data-c="${c}"></button>`).join("");
+$("swatches").querySelectorAll("button").forEach(b=>b.onclick=()=>{swatch=b.dataset.c;$("swatches").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));});
+let photoFile=null, previewUrl=null;
+const localPhotoUrls = new Map();
+let photoDatabase;
+function openPhotoDatabase(){
+  if(!photoDatabase) photoDatabase=new Promise((resolve,reject)=>{
+    if(!window.indexedDB){ reject(new Error("Fotospeicher nicht verfügbar")); return; }
+    const request=indexedDB.open("teller-match-photos",1);
+    request.onupgradeneeded=()=>request.result.createObjectStore("photos");
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>reject(request.error);
+    request.onblocked=()=>reject(new Error("Fotospeicher ist blockiert"));
+  });
+  return photoDatabase;
+}
+async function photoStore(mode,operation){
+  const database=await openPhotoDatabase();
+  return new Promise((resolve,reject)=>{
+    const transaction=database.transaction("photos",mode);
+    const request=operation(transaction.objectStore("photos"));
+    transaction.oncomplete=()=>resolve(request.result);
+    transaction.onerror=()=>reject(transaction.error);
+    transaction.onabort=()=>reject(transaction.error||new Error("Speichern abgebrochen"));
+  });
+}
+async function savePhoto(blob){
+  const id="local:"+crypto.randomUUID();
+  await photoStore("readwrite",store=>store.put(blob,id));
+  localPhotoUrls.set(id,URL.createObjectURL(blob));
+  return id;
+}
+async function restorePhotos(){
+  await Promise.all(custom.filter(d=>d.photo&&d.photo.startsWith("local:")).map(async d=>{
+    try{
+      const blob=await photoStore("readonly",store=>store.get(d.photo));
+      if(blob) localPhotoUrls.set(d.photo,URL.createObjectURL(blob));
+    }catch(e){ /* The dish remains usable with an illustration if browser storage is unavailable. */ }
+  }));
+}
+function photoError(message){
+  $("photoError").textContent=message;
+  $("photoError").hidden=!message;
+}
+$("fPhoto").addEventListener("change",()=>{
+  const f=$("fPhoto").files[0]; if(!f) return;
+  if(!/^image\//.test(f.type)){ clearPhoto(); photoError("Bitte eine Bilddatei auswählen, zum Beispiel JPG, PNG oder WebP."); return; }
+  if(f.size>20*1024*1024){ clearPhoto(); photoError("Das Foto ist zu groß. Bitte ein Bild mit höchstens 20 MB auswählen."); return; }
+  photoError("");
+  if(previewUrl) URL.revokeObjectURL(previewUrl);
+  photoFile=f;
+  previewUrl=URL.createObjectURL(f);
+  $("fPrev").innerHTML=`<img alt="Vorschau deines Gerichts" src="${previewUrl}">`;
+  $("fPhotoClear").hidden=false;
+});
+function clearPhoto(){ photoFile=null; if(previewUrl) URL.revokeObjectURL(previewUrl); previewUrl=null; photoError(""); $("fPhoto").value=""; $("fPhotoClear").hidden=true;
+  $("fPrev").innerHTML='<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.5"/><path d="M8 5l1.5-2h5L16 5"/></svg>'; }
+$("fPhotoClear").onclick=clearPhoto;
+async function shrink(file){
+  const bmp=await createImageBitmap(file);
+  const M=900, sc=Math.min(1,M/Math.max(bmp.width,bmp.height));
+  const c=document.createElement("canvas"); c.width=Math.round(bmp.width*sc); c.height=Math.round(bmp.height*sc);
+  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+  bmp.close();
+  return await new Promise((resolve,reject)=>c.toBlob(blob=>blob?resolve(blob):reject(new Error("Bild konnte nicht verarbeitet werden")),"image/jpeg",0.82));
+}
+function setPhotoAvailability(){
+  const ok=!!window.indexedDB;
+  $("fPhoto").disabled=!ok;
+  document.querySelector(".filebtn").style.opacity=ok?"":"0.45";
+  $("photoNote").textContent = cloud?.connected ? "Dein Foto wird verkleinert und privat zwischen euren Geräten geteilt. Ohne Internet wird es vorgemerkt. JPG, PNG oder WebP, maximal 20 MB." : ok ? "Dein Foto wird verkleinert und auf diesem Gerät gespeichert. Verbinde eure Handys unter „Mehr“, damit es automatisch geteilt wird. Maximal 20 MB." : "Dein Browser unterstützt den Fotospeicher nicht. Ein Gericht kannst du auch ohne Foto hinzufügen.";
+}
+$("addForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const btn=$("addBtn");
+  if(btn.disabled) return;
+  const name=$("fName").value.trim(); if(!name) return;
+  const d={id:"c"+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36),name,cuisine:$("fCuisine").value.trim()||"Eigenes",
+    time:Math.max(5,parseInt($("fTime").value,10)||30),veg:$("fVeg").checked,shape:$("fShape").value,base:swatch,
+    tops:["#F7F1E3","#4F8C3A","#8C2B18"],desc:$("fDesc").value.trim(),ing:[],by:me||""};
+  btn.disabled=true; btn.textContent="Wird gespeichert …"; photoError("");
+  try{
+    if(photoFile){
+      const blob=await shrink(photoFile);
+      d.photo=await savePhoto(blob);
+    }
+    if(cloud?.connected){
+      await cloud.enqueue('dish',{dish:d},d.photo||null);
+      if(!custom.some(item=>item.id===d.id)) custom.push(d);
+    }else{
+      custom.push(d);
+      if(!saveLocal()){ custom.pop(); throw new Error("Speicher voll"); }
+    }
+  }catch(err){
+    if(d.photo&&d.photo.startsWith("local:")){
+      URL.revokeObjectURL(localPhotoUrls.get(d.photo)); localPhotoUrls.delete(d.photo);
+      await photoStore("readwrite",store=>store.delete(d.photo)).catch(()=>{});
+    }
+    photoError("Das Gericht konnte nicht gespeichert werden. Bitte Speicherplatz und Bildformat prüfen und erneut versuchen. Deine Eingaben bleiben erhalten.");
+    return;
+  }finally{
+    btn.disabled=false; btn.textContent="Hinzufügen";
+  }
+  const bad=hits(d);
+  if(bad.length){ toast(`Enthält ${bad.join(", ")} und wird deshalb ausgeblendet`); }
+  $("addForm").reset(); clearPhoto(); topCardId=null; renderAll();
+  if(!bad.length) toast(`„${name}“ ist jetzt im Stapel`);
+});
+
+/* ---------- Reset ---------- */
+function onResetClick(){
+  $("resetBox").innerHTML=`<span class="status">Wirklich alle deine Entscheidungen löschen?</span><button class="btn warn" id="resetYes">Ja, löschen</button><button class="btn ghost" id="resetNo">Abbrechen</button>`;
+  $("resetNo").onclick=restoreReset;
+  $("resetYes").onclick=async()=>{
+    if(cloud?.connected){try{await cloud.enqueue('reset',{});}catch(e){toast(e.message);return;}}
+    swipes[me]={}; undoStack.length=0;
+    if(!cloud?.connected) saveLocal();
+    restoreReset(); topCardId=null; renderAll(); toast("Zurückgesetzt");
+  };
+}
+function restoreReset(){ $("resetBox").innerHTML=`<button class="btn warn" id="resetBtn">Meine Entscheidungen löschen</button>`; $("resetBtn").onclick=onResetClick; }
+$("resetBtn").onclick=onResetClick;
+
+/* ---------- Persistence ---------- */
+function persistSwipe(id,like){
+  if(cloud?.connected) cloud.enqueue('vote',{dish:id,liked:like}).catch(e=>toast(e.message));
+  else saveLocal();
+}
+function saveLocal(){
+  if(cloud?.connected) return true; // Preserve the pre-migration backup.
+  try{ localStorage.setItem("tm_local",JSON.stringify({names,swipes,custom,excl})); return true; }
+  catch(e){ toast("Speicher voll oder gesperrt. Änderungen konnten nicht gespeichert werden."); return false; }
+}
+function loadLocal(){
+  try{ const o=JSON.parse(lsGet("tm_local")||"null"); if(!o) return;
+    if(o.names) names=o.names; if(o.swipes){swipes.a=o.swipes.a||{};swipes.b=o.swipes.b||{};} if(Array.isArray(o.custom)) custom=o.custom; if(Array.isArray(o.excl)) excl=o.excl;
+  }catch(e){}
+}
+
+function legacyData(){ return {me,names:structuredClone(names),excl:[...excl],custom:structuredClone(custom),swipes:structuredClone(swipes)}; }
+async function init(){
+  loadLocal(); await restorePhotos();
+  const legacy=legacyData(); let signature='';let first=true;
+  cloud=new CloudSync(syncConfig,{
+    photo:id=>photoStore('readonly',store=>store.get(id)),
+    message:toast,
+    changed:()=>{renderHeader();if(tab==='more')renderSync();setPhotoAvailability();publish();},
+    snapshot:(snapshot,urls)=>{
+      const next=JSON.stringify([snapshot,[...urls]]);if(next===signature)return;signature=next;
+      const before=new Set(matchList().map(d=>d.id));
+      names=snapshot.room.names;excl=snapshot.room.exclusions;
+      me=snapshot.me.slot;lsSet('tm_who',me);
+      const slots=Object.fromEntries(snapshot.members.map(m=>[m.id,m.slot]));
+      swipes.a={};swipes.b={};
+      for(const v of snapshot.votes)if(v.liked!==null&&slots[v.member_id])swipes[slots[v.member_id]][v.dish_id]=v.liked;
+      custom=snapshot.dishes.map(d=>({...d.data,by:slots[d.member_id],photo:d.photo_local||(d.photo_path?'remote:'+d.photo_path:null),_photoUrl:urls.get(d.photo_path)?.url}));
+      topCardId=null;renderAll();
+      if(!first)for(const d of matchList())if(!before.has(d.id))toast(`Neues Match: ${d.name}`);
+      first=false;
+    }
+  });
+  cloudUI=createCloudUI({cloud,joinToken,legacy:legacyData,message:toast,me:()=>me,names:()=>names});
+  ready=true;renderAll();setPhotoAvailability();
+  if(joinToken)setTab('more');
+  try{await cloud.start();if(cloud.connected)await cloud.importLegacy(legacy);}catch(e){cloud.error=e.message;renderSync();}
+}
+init();
+})();
+</script>
+
+</body>
+</html>
