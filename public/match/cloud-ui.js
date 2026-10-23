@@ -17,7 +17,7 @@ export function createCloudUI({ cloud, joinToken, legacy, message, me, names }) 
     if(key!==next) {
       key=next;
       if(!cloud.configured) {
-        panel.innerHTML='<h4>Handys verbinden</h4><p class="status">Der Online-Abgleich wird gerade eingerichtet. Deine bisherigen Daten bleiben auf diesem Gerät gespeichert.</p>';
+        panel.innerHTML='<h4>Handys verbinden</h4><p class="status">Der Online-Abgleich wird gerade eingerichtet.</p>';
       } else if(view) {
         const other=view.me.slot==='a'?'b':'a';
         panel.innerHTML=`<h4>Gemeinsam verbunden</h4><p class="status">Du bist ${esc(names()[view.me.slot])}. Bewertungen, Gerichte, Fotos und die Ausschlussliste werden automatisch abgeglichen.</p>
@@ -36,7 +36,7 @@ export function createCloudUI({ cloud, joinToken, legacy, message, me, names }) 
           $('recoveryLabel').hidden=false;$('recoveryCode').value=code;$('recoveryCode').focus();$('recoveryCode').select();
         });
       } else {
-        panel.innerHTML=`<h4>Handys verbinden</h4><p class="status">Ein Handy erstellt euren privaten Bereich. Die andere Person öffnet danach den Einladungslink auf ihrem Handy. Eure vorhandenen Daten bleiben gesichert.</p>
+        panel.innerHTML=`<h4>Handys verbinden</h4><p class="status">Ein Handy erstellt euren privaten Bereich. Die andere Person öffnet danach den Einladungslink auf ihrem Handy.</p>
           <p id="syncState" class="status" role="status" aria-live="polite"></p><p id="syncError" role="alert" hidden></p>
           ${joinToken?'<button class="btn" id="joinRoom" type="button">Einladung annehmen</button>':'<button class="btn" id="createRoom" type="button">Gemeinsamen Bereich erstellen</button>'}
           <details><summary>Vorhandenen Platz wiederherstellen</summary><label for="restoreCode">Dein persönlicher Wiederherstellungscode<textarea id="restoreCode" placeholder="TM-R-…" autocomplete="off" spellcheck="false"></textarea></label><button class="btn ghost" id="restoreRoom" type="button">Auf diesem Gerät wiederherstellen</button></details>`;

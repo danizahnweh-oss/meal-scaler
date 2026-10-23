@@ -156,30 +156,6 @@ small {
   border: 0;
   background: transparent;
 }
-.with-frame:has(.migration) {
-  overflow: auto;
-}
-.migration {
-  width: 100%;
-  max-width: 460px;
-  margin: 0 auto;
-  padding: 16px;
-  background: #f8e9d9;
-}
-.migration h2 {
-  font-size: 16px;
-  margin-bottom: 8px;
-}
-.migration p {
-  font-size: 13px;
-  margin-bottom: 12px;
-}
-.migration + .teller-frame {
-  min-height: 800px;
-}
-body:has(.migration) .teller-frame iframe {
-  min-height: 740px;
-}
 .bottom-nav {
   display: flex;
   flex-shrink: 0;

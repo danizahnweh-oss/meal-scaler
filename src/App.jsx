@@ -1,4 +1,3 @@
-import { adoptTransfer } from './transfer.js';
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Heart,
@@ -24,7 +23,7 @@ import {
   mealTotals,
   shoppingList,
   ingredientHits,
-  legacyMeals,
+  pendingLocalRecords,
   normalize,
 } from "./planning.js";
 import "./App.css";
@@ -41,8 +40,6 @@ const EMPTY = {};
 const round = (n) => Math.round(n || 0);
 const defaultNames = { a: "Daniel", b: "Stina" };
 const allFoods = [...FOODS, ...EXTRA_FOODS];
-const OLD_ORIGIN = "https://danizahnweh-oss.github.io";
-const OLD_PAGE = OLD_ORIGIN + "/teller-match/transfer.html";
 function Nutrition({ totals }) {
   return (
     <div className="nutrition">
@@ -57,8 +54,7 @@ function Nutrition({ totals }) {
 }
 export default function App() {
   const frame = useRef(null),
-    requests = useRef(new Map()),
-    popup = useRef(null);
+    requests = useRef(new Map());
   const [screen, setScreen] = useState(
     location.hash.startsWith("#einladung=") ? "more" : "swipe",
   );
@@ -67,8 +63,6 @@ export default function App() {
     [selection, setSelection] = useState(null),
     [notice, setNotice] = useState(""),
     [query, setQuery] = useState("");
-  const [migration, setMigration] = useState(""),
-    [importBusy, setImportBusy] = useState(false);
   useEffect(()=>{document.querySelector('.app-main')?.scrollTo({top:0,behavior:'auto'});},[screen,selection]);
   const [frameUrl] = useState(
     () => "/match/index.html?embedded=1" + location.hash,
@@ -101,13 +95,22 @@ export default function App() {
     return () => clearTimeout(t);
   }, [notice]);
   useEffect(() => {
-    const receive = async (e) => {
+    const synchronizedRooms=new Set();
+    const receive = (e) => {
       if (
         e.origin === location.origin &&
         e.source === frame.current?.contentWindow
       ) {
         if (e.data.type === "tm:state") {
           setState(e.data.state);
+          const view=e.data.state.connected&&e.data.state.view;
+          if(view){
+            const key=view.room.id+':'+view.me.id;
+            if(!synchronizedRooms.has(key)){
+              synchronizedRooms.add(key);
+              for(const task of pendingLocalRecords(load(LOCAL,[]),view))frame.current.contentWindow.postMessage({type:'tm:enqueue',id:crypto.randomUUID(),kind:'plan:'+task.kind,payload:task.payload},location.origin);
+            }
+          }
           if (e.data.state.connected && location.hash.startsWith("#einladung="))
             history.replaceState(null, "", location.pathname);
         }
@@ -123,28 +126,7 @@ export default function App() {
             clearTimeout(r.timer);
             requests.current.delete(e.data.id);
             e.data.error ? r.reject(new Error(e.data.error)) : r.resolve();
-          }
-        }
-      }
-      if (
-        e.origin === OLD_ORIGIN &&
-        e.source === popup.current &&
-        e.data?.type === "tm:transfer-open"
-      ) {
-        popup.current.postMessage({ type: "tm:transfer-ready" }, OLD_ORIGIN);
-      }
-      if (
-        e.origin === OLD_ORIGIN &&
-        e.source === popup.current &&
-        e.data?.type === "tm:transfer"
-      ) {
-        try {
-          await adoptTransfer(e.data.payload);
-          popup.current.postMessage({ type: "tm:transferred" }, OLD_ORIGIN);
-          setMigration("Übernommen. Die App wird neu geladen.");
-          location.reload();
-        } catch (error) {
-          setMigration(error.message);
+          }else if(e.data.error)message(e.data.error);
         }
       }
     };
@@ -245,76 +227,6 @@ export default function App() {
     setSelection(id);
     setScreen("recipe");
   }
-  function transfer() {
-    popup.current = window.open(
-      OLD_PAGE,
-      "teller-match-transfer",
-      "width=520,height=700",
-    );
-    if (!popup.current)
-      setMigration("Bitte Pop-ups erlauben und die Übernahme erneut öffnen.");
-    else
-      setMigration(
-        "Bestätige die Übernahme im geöffneten Teller-Match-Fenster.",
-      );
-  }
-  async function importOld(saved = load("meal_scaler_state_v1", null)) {
-    if (!saved)
-      throw new Error(
-        "Auf diesem Gerät wurde kein alter Meal-Scaler-Plan gefunden. Du kannst ihn unten mit deiner bisherigen PIN laden.",
-      );
-    if (!me) throw new Error("Bitte zuerst deinen Namen unter Wischen wählen.");
-    setImportBusy(true);
-    try {
-      localStorage.setItem(
-        "meal_scaler_before_merge_v1",
-        JSON.stringify(saved),
-      );
-      if (!row("goal", member) && saved.dailyTarget)
-        await write("goal", member, {
-          kcal: Math.max(
-            500,
-            Math.min(10000, Number(saved.dailyTarget) || 2400),
-          ),
-        });
-      if (!row("profile", member))
-        await write("profile", member, {
-          weight: saved.userWeight || "",
-          pantry: saved.pantry || [],
-          customFoods: (saved.foodDb || []).filter(
-            (f) => !FOODS.some((s) => s.id === f.id),
-          ),
-          legacy: saved,
-        });
-      for (const m of legacyMeals(saved, saved.foodDb || FOODS)) {
-        const id = m.id + "-" + me;
-        if (row("meal", id)) continue;
-        m.data.portions = { a: me === "a" ? 1 : 0, b: me === "b" ? 1 : 0 };
-        await write("meal", id, m.data, false, 0);
-      }
-      message(
-        "Dein bisheriger Plan wurde übernommen. Wiederholtes Importieren überschreibt keine Mahlzeiten.",
-      );
-    } finally {
-      setImportBusy(false);
-    }
-  }
-  async function importLocal() {
-    if (!connected) throw new Error("Bitte zuerst die Handys verbinden.");
-    for (const r of local) {
-      if (r.deleted) continue;
-      const id = ["goal", "profile"].includes(r.kind)
-        ? r.id === "local-" + me
-          ? member
-          : null
-        : r.id;
-      if (!id || row(r.kind, id)) continue;
-      await write(r.kind, id, r.data, false, 0);
-    }
-    message(
-      "Lokale Planung wurde hochgeladen. Die Sicherung bleibt auf diesem Gerät.",
-    );
-  }
   const selectedDish = dishes.find((d) => d.id === selection);
   return (
     <div className="app-shell">
@@ -351,25 +263,6 @@ export default function App() {
           className="teller-frame"
           hidden={!["swipe", "matches", "more"].includes(screen)}
         >
-          {screen === "more" && (
-            <section className="migration">
-              <h2>Deine bisherigen Daten</h2>
-              <p>
-                Bereits Teller-Match genutzt? Übernimm deine Verbindung,
-                Bewertungen und Fotos, bevor du einen neuen Bereich erstellst.
-              </p>
-              <button className="secondary" onClick={transfer}>
-                Teller-Match übernehmen
-              </button>
-              <details><summary>Übernahme ohne neues Fenster</summary><p>Öffne die bisherige Seite im selben Browser und speichere dort deine private Sicherung. Sie enthält deine Anmeldung und Fotos; bewahre sie wie einen persönlichen Zugangscode auf.</p><a href={OLD_PAGE} target="_blank" rel="noreferrer">Teller-Match-Sicherung erstellen</a><label className="backup-file">Sicherungsdatei übernehmen<input type="file" accept="application/json,.json" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>150*1024*1024)throw new Error('Die Sicherung ist größer als 150 MB. Bitte die direkte Übernahme verwenden.');await adoptTransfer(JSON.parse(await file.text()));location.reload();}catch(error){setMigration(error.message);}}}/></label><p>Nach der Übernahme die alte Teller-Match-Seite schließen und künftig diese App verwenden.</p></details>
-            {migration && <p role="status">{migration}</p>}
-              {connected && local.length > 0 && (
-                <button className="text-button" onClick={safe(importLocal)}>
-                  Lokale Planung in diesen Bereich übernehmen
-                </button>
-              )}
-            </section>
-          )}
           <iframe
             ref={frame}
             src={frameUrl}
@@ -419,7 +312,7 @@ export default function App() {
             {!connected && (
               <p className="hint">
                 Die Planung bleibt zunächst auf diesem Gerät. Unter „Mehr“ könnt
-                ihr eure Handys verbinden und sie anschließend übernehmen.
+                ihr eure Handys verbinden. Danach wird sie automatisch abgeglichen.
               </p>
             )}
             <Week
@@ -511,11 +404,7 @@ export default function App() {
                 message("Dein persönliches Ziel wurde gespeichert.");
               })}
             />
-            <LegacyImport
-              busy={importBusy}
-              me={me}
-              onImport={safe(importOld)}
-            />
+
           </div>
         )}
       </main>
@@ -1271,94 +1160,6 @@ function Personal({ me, names, goal, profile, onSave }) {
         </ul>
       </section>
     </>
-  );
-}
-function LegacyImport({ busy, me, onImport }) {
-  const [name, setName] = useState(""),
-    [pin, setPin] = useState(""),
-    [error, setError] = useState(""),
-    [loading, setLoading] = useState(false);
-  return (
-    <section className="section">
-      <h2>Deinen bisherigen Meal-Scaler übernehmen</h2>
-      <p className="muted">
-        Der bestehende Speicher bleibt als Sicherung erhalten. Der alte Plan
-        wird nur deinem ausgewählten Platz zugeordnet; die gemeinsame
-        Ausschlussliste bleibt bestehen.
-      </p>
-      <button
-        className="secondary"
-        disabled={!me || busy}
-        onClick={() => onImport()}
-      >
-        Plan von diesem Gerät übernehmen
-      </button>
-      <details>
-        <summary>Alten Plan mit Name und PIN laden</summary>
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setError("");
-            setLoading(true);
-            try {
-              const response = await fetch(
-                "https://meal-scale-proxy.sanktannagymnasium.workers.dev/load",
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ name: name.trim(), pin }),
-                },
-              );
-              if (!response.ok)
-                throw new Error(
-                  "Der alte Plan konnte nicht geladen werden. Name und PIN prüfen.",
-                );
-              const result = await response.json();
-              if (!result.data)
-                throw new Error(
-                  "Für diesen Namen wurde kein gespeicherter Plan gefunden.",
-                );
-              await onImport(result.data);
-            } catch (e) {
-              setError(e.message);
-            } finally {
-              setLoading(false);
-            }
-          }}
-        >
-          <label>
-            Bisheriger Name
-            <input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoComplete="username"
-            />
-          </label>
-          <label>
-            Bisherige PIN
-            <input
-              required
-              type="password"
-              inputMode="numeric"
-              pattern="[0-9]{4}"
-              maxLength="4"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              autoComplete="current-password"
-            />
-          </label>
-          {error && (
-            <p role="alert" className="warning">
-              {error}
-            </p>
-          )}
-          <button className="secondary" disabled={!me || busy || loading}>
-            {loading ? "Wird geladen …" : "Alten Plan übernehmen"}
-          </button>
-        </form>
-      </details>
-    </section>
   );
 }
 function AIAssistant({ foods, exclusions, pantry, onRecipe }) {

@@ -112,27 +112,14 @@ export function ingredientHits(ingredients, exclusions) {
     });
   });
 }
-export function legacyMeals(saved, foods) {
-  const result = [];
-  for (const day of DAYS)
-    for (const [index, m] of (saved.plan?.[day] || []).entries()) {
-      result.push({
-        id: "legacy-" + day + "-" + (m.id ?? index),
-        data: {
-          name: m.name || "Mahlzeit",
-          day,
-          portions: { a: 1, b: 0 },
-          ingredients: (m.ingredients || []).map((i) => {
-            const f = foods.find((f) => f.id === i.foodId);
-            return {
-              ...f,
-              name: f?.name || "Unbekannte Zutat",
-              grams: Number(i.grams) || 0,
-            };
-          }),
-          instructions: m.instructions || [],
-        },
-      });
-    }
-  return result;
+// New entries created locally before pairing join the new shared area once connected.
+export function pendingLocalRecords(local,view){
+ return local.flatMap(record=>{
+  if(record.deleted)return [];
+  const personal=['goal','profile'].includes(record.kind);
+  if(personal&&record.id!=='local-'+view.me.slot)return [];
+  const id=personal?view.me.id:record.id;
+  if((view.planning||[]).some(r=>r.kind===record.kind&&r.id===id))return [];
+  return [{kind:record.kind,payload:{id,data:record.data,deleted:false,expected:0}}];
+ });
 }
