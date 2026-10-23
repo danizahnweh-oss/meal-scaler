@@ -69,6 +69,7 @@ export default function App() {
     [query, setQuery] = useState("");
   const [migration, setMigration] = useState(""),
     [importBusy, setImportBusy] = useState(false);
+  useEffect(()=>{document.querySelector('.app-main')?.scrollTo({top:0,behavior:'auto'});},[screen,selection]);
   const [frameUrl] = useState(
     () => "/match/index.html?embedded=1" + location.hash,
   );
@@ -528,8 +529,8 @@ export default function App() {
         ].map(([id, label, Icon]) => (
           <button
             key={id}
-            aria-current={screen === id ? "page" : undefined}
-            className={screen === id ? "active" : ""}
+            aria-current={screen === id || (screen === "recipe" && id === "plan") ? "page" : undefined}
+            className={screen === id || (screen === "recipe" && id === "plan") ? "active" : ""}
             onClick={() => setScreen(id)}
           >
             <Icon size={21} />
